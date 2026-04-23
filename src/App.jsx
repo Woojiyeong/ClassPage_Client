@@ -1,122 +1,66 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import AppLayout from './components/layout/AppLayout.jsx'
+import RoleGate from './components/auth/RoleGate.jsx'
+import DashboardPage from './pages/DashboardPage.jsx'
+import SchedulePage from './pages/SchedulePage.jsx'
+import JobsPage from './pages/JobsPage.jsx'
+import JobDetailPage from './pages/JobDetailPage.jsx'
+import JobWritePage from './pages/JobWritePage.jsx'
+import MealsPage from './pages/MealsPage.jsx'
+import PortfolioListPage from './pages/PortfolioListPage.jsx'
+import PortfolioDetailPage from './pages/PortfolioDetailPage.jsx'
+import PortfolioEditPage from './pages/PortfolioEditPage.jsx'
+import RulesPage from './pages/RulesPage.jsx'
+import PenaltiesPage from './pages/PenaltiesPage.jsx'
+import AdminPage from './pages/AdminPage.jsx'
+import LoginPage from './pages/LoginPage.jsx'
+import ForbiddenPage from './pages/ForbiddenPage.jsx'
+import NotFoundPage from './pages/NotFoundPage.jsx'
 import './App.css'
+import './components/common/ui.css'
 
-function App() {
-  const [count, setCount] = useState(0)
-
+export default function App() {
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
 
-      <div className="ticks"></div>
+      <Route
+        element={
+          <RoleGate allow={['student', 'teacher']}>
+            <AppLayout />
+          </RoleGate>
+        }
+      >
+        <Route index element={<DashboardPage />} />
+        <Route path="schedule" element={<SchedulePage />} />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        <Route path="jobs" element={<JobsPage />} />
+        <Route path="jobs/new" element={<JobWritePage />} />
+        <Route path="jobs/:id" element={<JobDetailPage />} />
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+        <Route path="meals" element={<MealsPage />} />
+
+        <Route path="portfolio" element={<PortfolioListPage />} />
+        <Route path="portfolio/:ownerId" element={<PortfolioDetailPage />} />
+        <Route path="portfolio/:ownerId/edit" element={<PortfolioEditPage />} />
+
+        <Route path="rules" element={<RulesPage />} />
+        <Route path="penalties" element={<PenaltiesPage />} />
+
+        <Route
+          path="admin"
+          element={
+            <RoleGate allow={['teacher']}>
+              <AdminPage />
+            </RoleGate>
+          }
+        />
+
+        <Route path="forbidden" element={<ForbiddenPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
   )
 }
-
-export default App
