@@ -1,20 +1,47 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import Icon from '../components/common/Icon.jsx'
-
-const demo = [
-  { id: 'u-teacher-1', name: '김선생', sub: '교사 · 관리자 계정', role: 'teacher' },
-  { id: 'u-student-1', name: '이준호', sub: '학생 계정 · 20301', role: 'student' },
-  { id: 'u-student-2', name: '박소연', sub: '학생 계정 · 20302', role: 'student' },
-]
+import Button from '../components/common/Button.jsx'
 
 export default function LoginPage() {
-  const { login } = useAuth()
+  const { login, booting, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  const handleLogin = (id) => {
-    login(id)
-    navigate('/', { replace: true })
+  useEffect(() => {
+    if (!booting && isAuthenticated) navigate('/', { replace: true })
+  }, [booting, isAuthenticated, navigate])
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    if (!username.trim() || !password) {
+      setError('아이디와 비밀번호를 입력하세요.')
+      return
+    }
+    setSubmitting(true)
+    try {
+      await login(username.trim(), password)
+      navigate('/', { replace: true })
+    } catch (err) {
+      setError(err?.message || '로그인에 실패했습니다.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (booting) {
+    return (
+      <div className="login-page">
+        <div className="login-card">
+          <p style={{ color: 'var(--text-muted)' }}>세션 확인 중…</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -23,37 +50,51 @@ export default function LoginPage() {
         <div className="login-brand">
           <span className="sidebar-logo">3-2</span>
           <div>
-            <div className="sidebar-title" style={{ fontSize: 18 }}>3학년 2반</div>
+            <div className="sidebar-title" style={{ fontSize: 18 }}>
+              ClassPage
+            </div>
             <div className="sidebar-sub">학급 운영 워크스페이스</div>
           </div>
         </div>
 
-        <h2 style={{ fontSize: 18, marginBottom: 6 }}>계정을 선택해 로그인하세요</h2>
+        <h2 style={{ fontSize: 18, marginBottom: 6 }}>로그인</h2>
         <p style={{ color: 'var(--text-muted)', marginBottom: 22, fontSize: 13 }}>
-          데모 환경이므로 비밀번호 없이 역할 기반으로 로그인됩니다.
+          백엔드에 등록된 계정으로 로그인합니다. (관리자가 만든 아이디)
         </p>
 
-        <div className="login-list">
-          {demo.map((u) => (
-            <button
-              key={u.id}
-              type="button"
-              className="login-item"
-              onClick={() => handleLogin(u.id)}
-            >
-              <div className="login-avatar">
-                <Icon name={u.role === 'teacher' ? 'settings' : 'user'} size={18} />
-              </div>
-              <div style={{ flex: 1, textAlign: 'left' }}>
-                <div className="login-name">{u.name}</div>
-                <div className="login-sub">{u.sub}</div>
-              </div>
-              <span className="login-chevron">
-                <Icon name="arrowRight" size={16} />
-              </span>
-            </button>
-          ))}
-        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="form-field">
+            <label htmlFor="cp-user">아이디</label>
+            <input
+              id="cp-user"
+              autoComplete="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="예: admin"
+            />
+          </div>
+          <div className="form-field">
+            <label htmlFor="cp-pass">비밀번호</label>
+            <input
+              id="cp-pass"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+          {error && (
+            <div className="file-error" style={{ marginBottom: 12 }}>
+              {error}
+            </div>
+          )}
+          <div className="form-actions">
+            <Button type="submit" disabled={submitting}>
+              <Icon name="user" size={15} />
+              {submitting ? '로그인 중…' : '로그인'}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   )

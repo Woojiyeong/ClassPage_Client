@@ -111,6 +111,30 @@ export default function PortfolioDetailPage() {
         <FileCard title="이력서" file={portfolio.resume} />
         <FileCard title="포트폴리오" file={portfolio.portfolio} />
       </div>
+
+      {(portfolio.summary || portfolio.content || portfolio.link) && (
+        <div className="grid" style={{ marginTop: 18 }}>
+          <Card title="등록 내용">
+            {portfolio.summary && (
+              <p style={{ marginBottom: 12, color: 'var(--text-muted)' }}>
+                {portfolio.summary}
+              </p>
+            )}
+            {portfolio.content && (
+              <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+                {portfolio.content}
+              </div>
+            )}
+            {portfolio.link && (
+              <p style={{ marginTop: 14 }}>
+                <a href={portfolio.link} target="_blank" rel="noreferrer" className="card-link">
+                  외부 링크 열기
+                </a>
+              </p>
+            )}
+          </Card>
+        </div>
+      )}
     </>
   )
 }

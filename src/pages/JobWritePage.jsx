@@ -18,18 +18,22 @@ export default function JobWritePage() {
 
   const set = (key) => (e) => setForm((p) => ({ ...p, [key]: e.target.value }))
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault()
     if (!form.title.trim() || !form.content.trim()) return
-    addJobPost({
-      title: form.title,
-      company: form.company,
-      content: form.content,
-      authorId: user.id,
-      authorName: user.name,
-      visibility: 'teacher-only',
-    })
-    navigate('/jobs', { replace: true })
+    try {
+      await addJobPost({
+        title: form.title,
+        company: form.company,
+        content: form.content,
+        authorId: user.id,
+        authorName: user.name,
+        visibility: 'teacher-only',
+      })
+      navigate('/jobs', { replace: true })
+    } catch (err) {
+      window.alert(err?.message || '게시에 실패했습니다.')
+    }
   }
 
   return (

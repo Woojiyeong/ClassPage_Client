@@ -9,7 +9,6 @@ import Icon from '../components/common/Icon.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useData } from '../context/DataContext.jsx'
 import { endOfWeek, formatDate, startOfWeek, toISO } from '../utils/date.js'
-import { users } from '../data/mockData.js'
 
 const statusTone = {
   open: 'danger',
@@ -28,7 +27,7 @@ export default function PenaltiesPage() {
   const [tab, setTab] = useState('week')
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState({
-    studentId: '',
+    studentName: '',
     reason: '',
     date: toISO(new Date()),
   })
@@ -44,20 +43,20 @@ export default function PenaltiesPage() {
 
   const list = tab === 'week' ? thisWeek : penalties
 
-  const students = users.filter((u) => u.role === 'student')
-
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault()
-    const student = students.find((s) => s.id === form.studentId)
-    if (!student || !form.reason.trim()) return
-    addPenalty({
-      studentId: student.id,
-      studentName: student.name,
-      reason: form.reason.trim(),
-      date: form.date,
-    })
-    setModalOpen(false)
-    setForm({ studentId: '', reason: '', date: toISO(new Date()) })
+    if (!form.studentName.trim() || !form.reason.trim()) return
+    try {
+      await addPenalty({
+        studentName: form.studentName.trim(),
+        reason: form.reason.trim(),
+        date: form.date,
+      })
+      setModalOpen(false)
+      setForm({ studentName: '', reason: '', date: toISO(new Date()) })
+    } catch (err) {
+      window.alert(err?.message || '저장에 실패했습니다.')
+    }
   }
 
   return (
@@ -108,7 +107,7 @@ export default function PenaltiesPage() {
               <tr>
                 <th>이름</th>
                 <th>사유</th>
-                <th>날짜</th>
+                <th>주 시작일</th>
                 <th>상태</th>
                 {isTeacher && <th style={{ textAlign: 'right' }}>관리</th>}
               </tr>
@@ -133,6 +132,7 @@ export default function PenaltiesPage() {
                           borderRadius: 6,
                           background: 'var(--surface)',
                         }}
+                        title="백엔드에 상태 저장은 아직 없습니다"
                       >
                         <option value="open">진행중</option>
                         <option value="resolved">해결</option>
@@ -150,19 +150,13 @@ export default function PenaltiesPage() {
       <Modal open={modalOpen} title="패널티 추가" onClose={() => setModalOpen(false)}>
         <form onSubmit={submit}>
           <div className="form-field">
-            <label>학생</label>
-            <select
-              value={form.studentId}
-              onChange={(e) => setForm((p) => ({ ...p, studentId: e.target.value }))}
+            <label>학생 이름</label>
+            <input
+              value={form.studentName}
+              onChange={(e) => setForm((p) => ({ ...p, studentName: e.target.value }))}
               required
-            >
-              <option value="">선택하세요</option>
-              {students.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} ({s.studentNo})
-                </option>
-              ))}
-            </select>
+              placeholder="실명으로 입력"
+            />
           </div>
           <div className="form-field">
             <label>사유</label>
@@ -173,7 +167,7 @@ export default function PenaltiesPage() {
             />
           </div>
           <div className="form-field">
-            <label>날짜</label>
+            <label>해당 주 시작일 (월요일 기준)</label>
             <input
               type="date"
               value={form.date}
@@ -182,7 +176,9 @@ export default function PenaltiesPage() {
             />
           </div>
           <div className="form-actions">
-            <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>취소</Button>
+            <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>
+              취소
+            </Button>
             <Button type="submit">저장</Button>
           </div>
         </form>

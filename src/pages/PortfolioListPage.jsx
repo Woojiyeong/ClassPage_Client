@@ -23,11 +23,11 @@ function PortfolioCardBody({ p, canOpen, isOwn }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <Badge tone={p.resume ? 'success' : 'default'}>
-            이력서 {p.resume ? '업로드' : '없음'}
+          <Badge tone={p.content?.trim() ? 'success' : 'default'}>
+            본문 {p.content?.trim() ? '작성' : '없음'}
           </Badge>
-          <Badge tone={p.portfolio ? 'success' : 'default'}>
-            포트폴리오 {p.portfolio ? '업로드' : '없음'}
+          <Badge tone={p.link?.trim() ? 'primary' : 'default'}>
+            링크 {p.link?.trim() ? '있음' : '없음'}
           </Badge>
         </div>
       </div>
@@ -48,7 +48,9 @@ export default function PortfolioListPage() {
   const [q, setQ] = useState('')
   const [fileFilter, setFileFilter] = useState('')
 
-  const myPortfolio = portfolios.find((p) => p.ownerId === user.id)
+  const myPortfolio = [...portfolios]
+    .filter((p) => p.ownerId === user.id)
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
 
   const visible = useMemo(() => {
     // 내 포트폴리오가 목록 맨 앞, 이후 최근 수정 순
@@ -70,10 +72,9 @@ export default function PortfolioListPage() {
         return searchable.toLowerCase().includes(needle)
       })
       .filter((p) => {
-        if (fileFilter === 'resume') return !!p.resume
-        if (fileFilter === 'portfolio') return !!p.portfolio
-        if (fileFilter === 'both') return !!p.resume && !!p.portfolio
-        if (fileFilter === 'missing') return !p.resume || !p.portfolio
+        if (fileFilter === 'content') return !!p.content?.trim()
+        if (fileFilter === 'link') return !!p.link?.trim()
+        if (fileFilter === 'missing') return !p.content?.trim()
         return true
       })
   }, [portfolios, user, isTeacher, q, fileFilter])
@@ -105,11 +106,10 @@ export default function PortfolioListPage() {
           style={{ flex: 1, minWidth: 220 }}
         />
         <select value={fileFilter} onChange={(e) => setFileFilter(e.target.value)}>
-          <option value="">업로드 상태 전체</option>
-          <option value="both">이력서 + 포트폴리오</option>
-          <option value="resume">이력서 업로드</option>
-          <option value="portfolio">포트폴리오 업로드</option>
-          <option value="missing">누락 있음</option>
+          <option value="">작성 상태 전체</option>
+          <option value="content">본문 작성됨</option>
+          <option value="link">외부 링크 있음</option>
+          <option value="missing">본문 없음</option>
         </select>
       </div>
 

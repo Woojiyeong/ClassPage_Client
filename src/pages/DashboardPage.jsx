@@ -215,7 +215,9 @@ export default function DashboardPage() {
               {visiblePortfolios.slice(0, 3).map((p) => {
                 const isOwn = p.ownerId === user?.id
                 const canOpen = isTeacher || isOwn
-                const count = (p.resume ? 1 : 0) + (p.portfolio ? 1 : 0)
+                const hasBody = !!(p.content && String(p.content).trim())
+                const hasLink = !!(p.link && String(p.link).trim())
+                const count = (hasBody ? 1 : 0) + (hasLink ? 1 : 0)
                 return (
                   <li key={p.id} className="upcoming-item">
                     <div>
@@ -227,7 +229,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <Badge tone={count === 2 ? 'success' : count === 1 ? 'primary' : 'default'}>
-                      PDF {count}/2
+                      작성 {count}/2
                     </Badge>
                   </li>
                 )

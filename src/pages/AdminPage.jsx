@@ -4,10 +4,12 @@ import Card from '../components/common/Card.jsx'
 import Badge from '../components/common/Badge.jsx'
 import EmptyState from '../components/common/EmptyState.jsx'
 import Icon from '../components/common/Icon.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { useData } from '../context/DataContext.jsx'
 import { endOfWeek, formatDate, startOfWeek } from '../utils/date.js'
 
 export default function AdminPage() {
+  const { user } = useAuth()
   const { schedules, rules, penalties, jobPosts, portfolios, notices, addNotice } = useData()
 
   const weekPenalties = (() => {
@@ -19,14 +21,18 @@ export default function AdminPage() {
     })
   })()
 
-  const postNotice = (e) => {
+  const postNotice = async (e) => {
     e.preventDefault()
-    const form = e.currentTarget
-    const title = form.title.value.trim()
-    const body = form.body.value.trim()
+    const formEl = e.currentTarget
+    const title = formEl.title.value.trim()
+    const body = formEl.body.value.trim()
     if (!title || !body) return
-    addNotice({ title, body, authorName: '김선생' })
-    form.reset()
+    try {
+      await addNotice({ title, body, authorName: user?.name || '교사' })
+      formEl.reset()
+    } catch (err) {
+      window.alert(err?.message || '공지 등록에 실패했습니다.')
+    }
   }
 
   return (

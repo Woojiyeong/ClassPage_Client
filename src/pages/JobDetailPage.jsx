@@ -21,10 +21,13 @@ export default function JobDetailPage() {
     return <Navigate to="/forbidden" replace />
   }
 
-  const handleDelete = () => {
-    if (window.confirm('정말 삭제하시겠어요?')) {
-      removeJobPost(post.id)
+  const handleDelete = async () => {
+    if (!window.confirm('정말 삭제하시겠어요?')) return
+    try {
+      await removeJobPost(post.id)
       navigate('/jobs', { replace: true })
+    } catch (err) {
+      window.alert(err?.message || '삭제에 실패했습니다.')
     }
   }
 

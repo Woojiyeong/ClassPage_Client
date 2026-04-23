@@ -1,14 +1,18 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { buildMonthMatrix, isSameDay, toISO } from '../../utils/date.js'
 import Icon from '../common/Icon.jsx'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 
-export default function Calendar({ schedules, selectedDate, onSelect }) {
+export default function Calendar({ schedules, selectedDate, onSelect, onViewChange }) {
   const [cursor, setCursor] = useState(() => {
     const d = selectedDate ? new Date(selectedDate) : new Date()
     return { year: d.getFullYear(), month: d.getMonth() }
   })
+
+  useEffect(() => {
+    onViewChange?.({ year: cursor.year, month: cursor.month })
+  }, [cursor, onViewChange])
 
   const cells = useMemo(
     () => buildMonthMatrix(cursor.year, cursor.month),
