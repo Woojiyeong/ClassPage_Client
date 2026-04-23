@@ -51,6 +51,9 @@
  * @property {string} ownerId
  * @property {string} ownerName
  * @property {string} title
+ * @property {string=} summary
+ * @property {string=} link
+ * @property {string=} legacyContent  이전 방식(텍스트만) 저장분
  * @property {PortfolioFile=} resume      이력서 PDF
  * @property {PortfolioFile=} portfolio   포트폴리오 PDF
  * @property {string} updatedAt       ISO datetime

@@ -112,17 +112,17 @@ export default function PortfolioDetailPage() {
         <FileCard title="포트폴리오" file={portfolio.portfolio} />
       </div>
 
-      {(portfolio.summary || portfolio.content || portfolio.link) && (
+      {(portfolio.summary || portfolio.legacyContent || portfolio.link) && (
         <div className="grid" style={{ marginTop: 18 }}>
-          <Card title="등록 내용">
+          <Card title="추가 정보">
             {portfolio.summary && (
               <p style={{ marginBottom: 12, color: 'var(--text-muted)' }}>
                 {portfolio.summary}
               </p>
             )}
-            {portfolio.content && (
+            {portfolio.legacyContent && (
               <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
-                {portfolio.content}
+                {portfolio.legacyContent}
               </div>
             )}
             {portfolio.link && (

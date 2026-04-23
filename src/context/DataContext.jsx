@@ -71,20 +71,44 @@ function mapEmployment(row) {
   }
 }
 
+function parseStoredPortfolioPayload(raw) {
+  if (!raw || typeof raw !== 'string') {
+    return { resume: null, portfolio: null, legacyText: '' }
+  }
+  const t = raw.trim()
+  if (t.startsWith('{')) {
+    try {
+      const j = JSON.parse(t)
+      if (j && j.v === 1) {
+        return {
+          resume: j.resume ?? null,
+          portfolio: j.portfolio ?? null,
+          legacyText: '',
+        }
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  return { resume: null, portfolio: null, legacyText: raw }
+}
+
 function mapPortfolio(p) {
   const st = p.student
   const sid = p.student_id ?? p.student?.id
+  const raw = p.content || ''
+  const { resume, portfolio, legacyText } = parseStoredPortfolioPayload(raw)
   return {
     id: String(p.id),
     ownerId: String(sid ?? ''),
     ownerName: st?.name || '',
     title: p.title || '',
     summary: p.summary || '',
-    content: p.content || '',
+    legacyContent: legacyText,
     link: p.link || '',
     updatedAt: p.updated_at,
-    resume: null,
-    portfolio: null,
+    resume,
+    portfolio,
   }
 }
 
@@ -288,14 +312,16 @@ export function DataProvider({ children }) {
           }
         }
       }
+      const body = {
+        title: payload.title,
+        summary: payload.summary ?? '',
+        link: payload.link ?? '',
+      }
+      if (payload.resume) body.resume = payload.resume
+      if (payload.portfolio) body.portfolio = payload.portfolio
       await apiFetch('/portfolios', {
         method: 'POST',
-        body: {
-          title: payload.title,
-          summary: payload.summary ?? '',
-          content: payload.content ?? '',
-          link: payload.link ?? '',
-        },
+        body,
       })
       await refreshPortfolios()
     },
