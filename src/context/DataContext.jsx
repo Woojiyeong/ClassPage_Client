@@ -120,13 +120,29 @@ function mapRule(r) {
   }
 }
 
+/** PostgreSQL DATE / ISO 문자열 모두 YYYY-MM-DD 로 맞춤 */
+function penaltyWeekStartOnly(v) {
+  if (v == null || v === '') return ''
+  if (typeof v === 'string') return v.slice(0, 10)
+  try {
+    const d = new Date(v)
+    if (Number.isNaN(d.getTime())) return ''
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  } catch {
+    return ''
+  }
+}
+
 function mapPenalty(p) {
   return {
     id: String(p.id),
     studentId: '',
     studentName: p.student_name || '',
     reason: p.reason || '',
-    date: p.week_start,
+    date: penaltyWeekStartOnly(p.week_start),
     status: 'open',
   }
 }
@@ -195,8 +211,7 @@ export function DataProvider({ children }) {
   }, [])
 
   const refreshPenalties = useCallback(async () => {
-    const res = await apiFetch('/penalties/this-week')
-    const rows = res?.penalties
+    const rows = await apiFetch('/penalties/recent')
     setPenalties(Array.isArray(rows) ? rows.map(mapPenalty) : [])
   }, [])
 

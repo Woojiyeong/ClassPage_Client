@@ -27,10 +27,12 @@ export const startOfDay = (value) => {
   return d
 }
 
+/** 월요일 시작 주 (백엔드 penalties week_start 와 동일) */
 export const startOfWeek = (value) => {
   const d = startOfDay(value)
   const day = d.getDay()
-  d.setDate(d.getDate() - day)
+  const diffToMonday = day === 0 ? -6 : 1 - day
+  d.setDate(d.getDate() + diffToMonday)
   return d
 }
 
