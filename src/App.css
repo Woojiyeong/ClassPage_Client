@@ -490,3 +490,8 @@
   border-color: var(--primary);
   color: #fff;
 }
+
+/* ============ Dashboard notice spacing ============ */
+.notice-top-card {
+  margin-bottom: 18px;
+}

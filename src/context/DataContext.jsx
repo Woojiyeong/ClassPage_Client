@@ -50,6 +50,8 @@ function mapEvent(e) {
     id: String(e.id),
     title,
     date: e.event_date,
+    startDate: e.start_date || e.event_date,
+    endDate: e.end_date || '',
     description: e.description || '',
     important,
     createdBy: e.created_by != null ? String(e.created_by) : '',
@@ -143,7 +145,9 @@ function mapPenalty(p) {
     studentName: p.student_name || '',
     reason: p.reason || '',
     date: penaltyWeekStartOnly(p.week_start),
-    status: 'open',
+    startDate: penaltyWeekStartOnly(p.start_date ?? p.week_start),
+    endDate: penaltyWeekStartOnly(p.end_date ?? ''),
+    status: p.status || 'open',
   }
 }
 
@@ -271,10 +275,12 @@ export function DataProvider({ children }) {
         body: {
           title,
           description: payload.description?.trim() || '',
-          event_date: payload.date,
+          event_date: payload.startDate || payload.date,
+          start_date: payload.startDate || payload.date,
+          end_date: payload.endDate || undefined,
         },
       })
-      const month = payload.date?.slice(0, 7) || scheduleMonthRef.current
+      const month = (payload.startDate || payload.date)?.slice(0, 7) || scheduleMonthRef.current
       await refreshSchedules(month)
     },
     [refreshSchedules],
@@ -366,7 +372,9 @@ export function DataProvider({ children }) {
         body: {
           student_name: payload.studentName,
           reason: payload.reason,
-          week_start: payload.date,
+          week_start: payload.startDate,
+          start_date: payload.startDate,
+          end_date: payload.endDate || undefined,
         },
       })
       await refreshPenalties()
@@ -374,14 +382,62 @@ export function DataProvider({ children }) {
     [refreshPenalties],
   )
 
-  const updatePenaltyStatus = useCallback(async (_id, _status) => {
-    /* 백엔드에 패널티 상태 필드 없음 — UI만 유지 */
-  }, [])
+  const removePenalty = useCallback(
+    async (id) => {
+      await apiFetch(`/penalties/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      await refreshPenalties()
+    },
+    [refreshPenalties],
+  )
+
+  const updatePenaltyStatus = useCallback(
+    async (id, status) => {
+      await apiFetch(`/penalties/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: { status },
+      })
+      await refreshPenalties()
+    },
+    [refreshPenalties],
+  )
+
+  const updatePenaltyDates = useCallback(
+    async (id, payload) => {
+      await apiFetch(`/penalties/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: {
+          start_date: payload.startDate,
+          end_date: payload.endDate || '',
+        },
+      })
+      await refreshPenalties()
+    },
+    [refreshPenalties],
+  )
 
   const addNotice = useCallback(
     async (payload) => {
       await apiFetch('/announcements', {
         method: 'POST',
+        body: { title: payload.title, content: payload.body },
+      })
+      await refreshNotices()
+    },
+    [refreshNotices],
+  )
+
+  const removeNotice = useCallback(
+    async (id) => {
+      await apiFetch(`/announcements/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      await refreshNotices()
+    },
+    [refreshNotices],
+  )
+
+  const updateNotice = useCallback(
+    async (id, payload) => {
+      await apiFetch(`/announcements/${encodeURIComponent(id)}`, {
+        method: 'PUT',
         body: { title: payload.title, content: payload.body },
       })
       await refreshNotices()
@@ -412,8 +468,12 @@ export function DataProvider({ children }) {
       addRule,
       removeRule,
       addPenalty,
+      removePenalty,
       updatePenaltyStatus,
+      updatePenaltyDates,
       addNotice,
+      removeNotice,
+      updateNotice,
     }),
     [
       schedules,
@@ -436,8 +496,12 @@ export function DataProvider({ children }) {
       addRule,
       removeRule,
       addPenalty,
+      removePenalty,
       updatePenaltyStatus,
+      updatePenaltyDates,
       addNotice,
+      removeNotice,
+      updateNotice,
     ],
   )
 

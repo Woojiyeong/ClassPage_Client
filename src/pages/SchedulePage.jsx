@@ -27,7 +27,11 @@ export default function SchedulePage() {
   const selectedSchedules = useMemo(
     () =>
       schedules
-        .filter((s) => s.date === selectedDate)
+        .filter((s) => {
+          const start = s.startDate || s.date
+          const end = s.endDate || start
+          return selectedDate >= start && selectedDate <= end
+        })
         .sort((a, b) => (a.important === b.important ? 0 : a.important ? -1 : 1)),
     [schedules, selectedDate],
   )
@@ -44,7 +48,7 @@ export default function SchedulePage() {
     try {
       await addSchedule({ ...payload, createdBy: user.id })
       setModalOpen(false)
-      setSelectedDate(payload.date)
+      setSelectedDate(payload.startDate)
     } catch (e) {
       window.alert(e?.message || '일정 저장에 실패했습니다.')
     }
@@ -93,6 +97,11 @@ export default function SchedulePage() {
                       <div className="schedule-title">
                         {s.important && <Badge tone="warning">중요</Badge>} {s.title}
                       </div>
+                    {s.endDate && s.endDate !== s.startDate && (
+                      <div className="upcoming-date">
+                        {formatDate(s.startDate, true)} ~ {formatDate(s.endDate, true)}
+                      </div>
+                    )}
                       {s.description && (
                         <div className="schedule-desc">{s.description}</div>
                       )}

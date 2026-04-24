@@ -5,7 +5,8 @@ import { toISO } from '../../utils/date.js'
 export default function ScheduleForm({ initialDate, onSubmit, onCancel }) {
   const [form, setForm] = useState({
     title: '',
-    date: initialDate || toISO(new Date()),
+    startDate: initialDate || toISO(new Date()),
+    endDate: '',
     description: '',
     important: false,
   })
@@ -34,8 +35,13 @@ export default function ScheduleForm({ initialDate, onSubmit, onCancel }) {
       </div>
 
       <div className="form-field">
-        <label>날짜</label>
-        <input type="date" value={form.date} onChange={set('date')} required />
+        <label>시작일</label>
+        <input type="date" value={form.startDate} onChange={set('startDate')} required />
+      </div>
+
+      <div className="form-field">
+        <label>종료일 (선택)</label>
+        <input type="date" value={form.endDate} onChange={set('endDate')} />
       </div>
 
       <div className="form-field">

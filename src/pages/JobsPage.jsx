@@ -11,12 +11,12 @@ import { useData } from '../context/DataContext.jsx'
 import { formatDate } from '../utils/date.js'
 
 export default function JobsPage() {
-  const { user, isTeacher, canPostJobs } = useAuth()
+  const { isTeacher, canPostJobs } = useAuth()
   const { jobPosts } = useData()
   const [q, setQ] = useState('')
 
   const visible = useMemo(() => {
-    const base = isTeacher ? jobPosts : jobPosts.filter((j) => j.authorId === user.id)
+    const base = jobPosts
     if (!q.trim()) return base
     const needle = q.toLowerCase()
     return base.filter(
@@ -25,7 +25,7 @@ export default function JobsPage() {
         j.content.toLowerCase().includes(needle) ||
         (j.company || '').toLowerCase().includes(needle),
     )
-  }, [jobPosts, user, isTeacher, q])
+  }, [jobPosts, q])
 
   return (
     <>
@@ -33,10 +33,10 @@ export default function JobsPage() {
         title="취업 정보"
         description={
           isTeacher
-            ? '학생들이 올린 취업 관련 게시글을 모두 열람할 수 있습니다.'
+            ? '학급 취업 관련 게시글을 모두 열람하고 관리할 수 있습니다.'
             : canPostJobs
-            ? '반 대표 권한으로 취업 정보를 작성할 수 있어요. 작성한 글은 담임 선생님만 함께 열람합니다.'
-            : '취업 정보 작성은 담임 선생님과 반 대표 학생만 가능합니다. 본인이 관련된 게시글이 있으면 이곳에 표시됩니다.'
+            ? '취업 담당 권한으로 취업 정보를 작성할 수 있어요. 게시글은 학급 전체에 공유됩니다.'
+            : '학급 전체 취업 게시글을 열람할 수 있습니다.'
         }
         actions={
           canPostJobs && (
@@ -57,7 +57,7 @@ export default function JobsPage() {
           style={{ flex: 1, minWidth: 220 }}
         />
         <Badge tone="primary">
-          {isTeacher ? `총 ${visible.length}건 · 전체 열람 가능` : '본인 + 교사만 열람'}
+          {`총 ${visible.length}건 · 학급 전체 열람`}
         </Badge>
       </div>
 
@@ -77,7 +77,7 @@ export default function JobsPage() {
               <Card>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                   <div className="job-title">{j.title}</div>
-                  <Badge tone="primary">교사 열람</Badge>
+                  <Badge tone="primary">학급 공유</Badge>
                 </div>
                 <div className="job-meta">
                   {j.authorName}

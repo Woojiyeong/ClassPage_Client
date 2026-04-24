@@ -59,7 +59,7 @@ export default function LoginPage() {
 
         <h2 style={{ fontSize: 18, marginBottom: 6 }}>로그인</h2>
         <p style={{ color: 'var(--text-muted)', marginBottom: 22, fontSize: 13 }}>
-          백엔드에 등록된 계정으로 로그인합니다. (관리자가 만든 아이디)
+          학번(아이디) + 공통 비밀번호로 로그인합니다. (예: 3216 / 1234)
         </p>
 
         <form onSubmit={handleSubmit}>
@@ -70,7 +70,7 @@ export default function LoginPage() {
               autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="예: admin"
+              placeholder="예: 3216"
             />
           </div>
           <div className="form-field">

@@ -39,7 +39,7 @@ export default function App() {
 
       <Route
         element={
-          <RoleGate allow={['student', 'teacher', 'admin']}>
+          <RoleGate allow={['student', 'teacher', 'admin', 'career']}>
             <AppLayout />
           </RoleGate>
         }

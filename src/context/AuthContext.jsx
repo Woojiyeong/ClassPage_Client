@@ -103,7 +103,7 @@ export function AuthProvider({ children }) {
     const isStudent = role === 'student'
     const isStaff = isAdmin || isTeacherRole
     const canPostJobs =
-      isStaff || (isStudent && canManageEmployment)
+      isStaff || canManageEmployment
 
     return {
       token,

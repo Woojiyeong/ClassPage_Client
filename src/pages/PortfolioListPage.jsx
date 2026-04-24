@@ -80,6 +80,23 @@ export default function PortfolioListPage() {
       })
   }, [portfolios, user, isTeacher, q, fileFilter])
 
+  const teacherVisible = useMemo(() => {
+    if (!isTeacher) return []
+    const latestByOwner = new Map()
+    for (const p of portfolios) {
+      const prev = latestByOwner.get(p.ownerId)
+      if (!prev || new Date(p.updatedAt).getTime() > new Date(prev.updatedAt).getTime()) {
+        latestByOwner.set(p.ownerId, p)
+      }
+    }
+    const list = [...latestByOwner.values()].sort((a, b) =>
+      a.ownerName.localeCompare(b.ownerName, 'ko'),
+    )
+    if (!q.trim()) return list
+    const needle = q.toLowerCase()
+    return list.filter((p) => p.ownerName.toLowerCase().includes(needle))
+  }, [isTeacher, portfolios, q])
+
   return (
     <>
       <PageHeader
@@ -101,21 +118,43 @@ export default function PortfolioListPage() {
       <div className="filter-bar">
         <input
           type="search"
-          placeholder={isTeacher ? '이름, 제목, 소개 검색' : '반 친구 이름 검색'}
+          placeholder={isTeacher ? '학생 이름 검색' : '반 친구 이름 검색'}
           value={q}
           onChange={(e) => setQ(e.target.value)}
           style={{ flex: 1, minWidth: 220 }}
         />
-        <select value={fileFilter} onChange={(e) => setFileFilter(e.target.value)}>
-          <option value="">업로드 상태 전체</option>
-          <option value="both">이력서 + 포트폴리오</option>
-          <option value="resume">이력서 업로드</option>
-          <option value="portfolio">포트폴리오 업로드</option>
-          <option value="missing">누락 있음</option>
-        </select>
+        {!isTeacher && (
+          <select value={fileFilter} onChange={(e) => setFileFilter(e.target.value)}>
+            <option value="">업로드 상태 전체</option>
+            <option value="both">이력서 + 포트폴리오</option>
+            <option value="resume">이력서 업로드</option>
+            <option value="portfolio">포트폴리오 업로드</option>
+            <option value="missing">누락 있음</option>
+          </select>
+        )}
       </div>
 
-      {visible.length === 0 ? (
+      {isTeacher ? (
+        teacherVisible.length === 0 ? (
+          <EmptyState title="등록된 포트폴리오가 없습니다" />
+        ) : (
+          <Card title="학생별 포트폴리오">
+            <ul className="upcoming-list">
+              {teacherVisible.map((p) => (
+                <li key={p.ownerId} className="upcoming-item">
+                  <div>
+                    <div className="upcoming-title">{p.ownerName}</div>
+                    <div className="upcoming-date">{formatDate(p.updatedAt)} 수정</div>
+                  </div>
+                  <Link to={`/portfolio/${p.ownerId}`} className="btn btn-primary">
+                    열기
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )
+      ) : visible.length === 0 ? (
         <EmptyState title="등록된 포트폴리오가 없습니다" />
       ) : (
         <div className="grid grid-2">

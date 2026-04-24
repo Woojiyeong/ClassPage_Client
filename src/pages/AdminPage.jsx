@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useState } from 'react'
 import PageHeader from '../components/common/PageHeader.jsx'
 import Card from '../components/common/Card.jsx'
 import Badge from '../components/common/Badge.jsx'
@@ -10,7 +11,10 @@ import { endOfWeek, formatDate, startOfWeek } from '../utils/date.js'
 
 export default function AdminPage() {
   const { user } = useAuth()
-  const { schedules, rules, penalties, jobPosts, portfolios, notices, addNotice } = useData()
+  const { schedules, rules, penalties, jobPosts, portfolios, notices, addNotice, removeNotice, updateNotice } = useData()
+  const [editingNoticeId, setEditingNoticeId] = useState('')
+  const [editTitle, setEditTitle] = useState('')
+  const [editBody, setEditBody] = useState('')
 
   const weekPenalties = (() => {
     const s = startOfWeek(new Date()).getTime()
@@ -33,6 +37,12 @@ export default function AdminPage() {
     } catch (err) {
       window.alert(err?.message || '공지 등록에 실패했습니다.')
     }
+  }
+
+  const startEditNotice = (n) => {
+    setEditingNoticeId(n.id)
+    setEditTitle(n.title)
+    setEditBody(n.body)
   }
 
   return (
@@ -137,6 +147,96 @@ export default function AdminPage() {
               <button type="submit" className="btn btn-primary">게시</button>
             </div>
           </form>
+          {notices.length > 0 && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-soft)', marginBottom: 8 }}>
+                최근 공지 관리
+              </div>
+              <ul className="upcoming-list">
+                {notices.slice(0, 5).map((n) => (
+                  <li key={n.id} className="upcoming-item">
+                    {editingNoticeId === n.id ? (
+                      <form
+                        style={{ width: '100%' }}
+                        onSubmit={async (e) => {
+                          e.preventDefault()
+                          if (!editTitle.trim() || !editBody.trim()) return
+                          try {
+                            await updateNotice(n.id, { title: editTitle.trim(), body: editBody.trim() })
+                            setEditingNoticeId('')
+                            setEditTitle('')
+                            setEditBody('')
+                          } catch (err) {
+                            window.alert(err?.message || '공지 수정에 실패했습니다.')
+                          }
+                        }}
+                      >
+                        <div className="form-field">
+                          <label>제목</label>
+                          <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required />
+                        </div>
+                        <div className="form-field">
+                          <label>본문</label>
+                          <textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} required />
+                        </div>
+                        <div className="form-actions">
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            onClick={() => {
+                              setEditingNoticeId('')
+                              setEditTitle('')
+                              setEditBody('')
+                            }}
+                          >
+                            취소
+                          </button>
+                          <button type="submit" className="btn btn-primary">저장</button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <div>
+                          <div className="upcoming-title">{n.title}</div>
+                          <div className="upcoming-date">
+                            {n.authorName} · {formatDate(n.createdAt)}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            onClick={() => startEditNotice(n)}
+                          >
+                            수정
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-danger"
+                            onClick={async () => {
+                              if (!window.confirm('이 공지를 삭제할까요?')) return
+                              try {
+                                await removeNotice(n.id)
+                                if (editingNoticeId === n.id) {
+                                  setEditingNoticeId('')
+                                  setEditTitle('')
+                                  setEditBody('')
+                                }
+                              } catch (err) {
+                                window.alert(err?.message || '공지 삭제에 실패했습니다.')
+                              }
+                            }}
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </Card>
       </div>
     </>

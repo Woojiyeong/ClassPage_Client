@@ -74,9 +74,9 @@ export default function PortfolioEditPage() {
   const [form, setForm] = useState({
     title: `${user.name} 포트폴리오`,
     resume: null,
-    portfolio: null,
+    link: '',
   })
-  const [errors, setErrors] = useState({ resume: '', portfolio: '', general: '' })
+  const [errors, setErrors] = useState({ resume: '', general: '' })
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -84,7 +84,7 @@ export default function PortfolioEditPage() {
     setForm({
       title: existing.title || `${user.name} 포트폴리오`,
       resume: existing.resume || null,
-      portfolio: existing.portfolio || null,
+      link: existing.link || '',
     })
   }, [existing?.id, user.name])
 
@@ -103,10 +103,10 @@ export default function PortfolioEditPage() {
 
   const submit = async (e) => {
     e.preventDefault()
-    if (!form.resume && !form.portfolio) {
+    if (!form.resume && !form.link.trim()) {
       setErrors((p) => ({
         ...p,
-        general: '이력서 또는 포트폴리오 중 최소 1개는 업로드해야 합니다.',
+        general: '이력서 PDF 또는 링크 중 최소 1개는 입력해야 합니다.',
       }))
       return
     }
@@ -120,9 +120,8 @@ export default function PortfolioEditPage() {
       await upsertPortfolio(user.id, user.name, {
         title: form.title.trim(),
         summary: '',
-        link: '',
+        link: form.link.trim(),
         resume: form.resume || undefined,
-        portfolio: form.portfolio || undefined,
       })
       navigate(`/portfolio/${user.id}`, { replace: true })
     } catch (err) {
@@ -136,7 +135,7 @@ export default function PortfolioEditPage() {
     <>
       <PageHeader
         title={existing ? '포트폴리오 수정' : '포트폴리오 등록'}
-        description="이력서·포트폴리오 PDF를 업로드하면 서버에 저장됩니다. (본인과 교사만 열람)"
+        description="이력서 PDF와 링크를 제출합니다. 저장 후 언제든 다시 수정할 수 있습니다."
       />
 
       <form onSubmit={submit}>
@@ -154,8 +153,8 @@ export default function PortfolioEditPage() {
         <div style={{ height: 16 }} />
 
         <Card
-          title="서류 업로드"
-          subtitle="최소 1개의 PDF 파일을 업로드해야 저장할 수 있어요."
+          title="이력서 제출"
+          subtitle="이력서 PDF 또는 링크 중 하나 이상을 제출해야 저장할 수 있어요."
         >
           <FileField
             label="이력서 PDF"
@@ -166,14 +165,14 @@ export default function PortfolioEditPage() {
             error={errors.resume}
           />
 
-          <FileField
-            label="포트폴리오 PDF"
-            description="프로젝트/작업물 모음 포트폴리오"
-            file={form.portfolio}
-            onChange={handleFile('portfolio')}
-            onRemove={() => setForm((p) => ({ ...p, portfolio: null }))}
-            error={errors.portfolio}
-          />
+          <div className="form-field">
+            <label>포트폴리오/이력서 링크 (선택)</label>
+            <input
+              value={form.link}
+              onChange={(e) => setForm((p) => ({ ...p, link: e.target.value }))}
+              placeholder="https://..."
+            />
+          </div>
 
           {errors.general && <div className="file-error">{errors.general}</div>}
         </Card>
@@ -182,7 +181,7 @@ export default function PortfolioEditPage() {
           <Button variant="ghost" type="button" onClick={() => navigate(-1)}>
             취소
           </Button>
-          <Button type="submit" disabled={saving || (!form.resume && !form.portfolio)}>
+          <Button type="submit" disabled={saving || (!form.resume && !form.link.trim())}>
             {saving ? '저장 중…' : '저장'}
           </Button>
         </div>

@@ -57,7 +57,9 @@ export default function Sidebar() {
                   ? '시스템 관리자'
                   : user.role === 'teacher'
                     ? '교사'
-                    : `학생 · ${user.studentNo ?? ''}${user.canPostJobs ? ' · 반 대표' : ''}`}
+                    : user.role === 'career'
+                      ? '취업관리자'
+                      : `학생 · ${user.studentNo ?? ''}${user.canPostJobs ? ' · 반 대표' : ''}`}
               </div>
             </div>
           </div>

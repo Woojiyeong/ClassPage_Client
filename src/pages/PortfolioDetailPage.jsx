@@ -108,11 +108,19 @@ export default function PortfolioDetailPage() {
       />
 
       <div className="grid grid-2">
-        <FileCard title="이력서" file={portfolio.resume} />
-        <FileCard title="포트폴리오" file={portfolio.portfolio} />
+        <FileCard title="이력서 PDF" file={portfolio.resume} />
+        <Card title="제출 링크">
+          {portfolio.link ? (
+            <a href={portfolio.link} target="_blank" rel="noreferrer" className="card-link">
+              링크 열기
+            </a>
+          ) : (
+            <EmptyState title="등록된 링크가 없습니다" />
+          )}
+        </Card>
       </div>
 
-      {(portfolio.summary || portfolio.legacyContent || portfolio.link) && (
+      {(portfolio.summary || portfolio.legacyContent) && (
         <div className="grid" style={{ marginTop: 18 }}>
           <Card title="추가 정보">
             {portfolio.summary && (
@@ -124,13 +132,6 @@ export default function PortfolioDetailPage() {
               <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
                 {portfolio.legacyContent}
               </div>
-            )}
-            {portfolio.link && (
-              <p style={{ marginTop: 14 }}>
-                <a href={portfolio.link} target="_blank" rel="noreferrer" className="card-link">
-                  외부 링크 열기
-                </a>
-              </p>
             )}
           </Card>
         </div>
