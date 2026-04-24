@@ -27,11 +27,20 @@ export async function apiFetch(path, opts = {}) {
     headers.Authorization = `Bearer ${t}`
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  })
+  let res
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    })
+  } catch (e) {
+    throw new Error(
+      e?.name === 'TypeError'
+        ? `API에 연결할 수 없습니다. (${API_BASE}) Vercel이면 CLASSPAGE_API_ORIGIN(또는 VITE_API_URL), 로컬이면 백엔드 실행·포트를 확인하세요.`
+        : String(e?.message || e),
+    )
+  }
 
   const text = await res.text()
   if (raw) {

@@ -17,9 +17,12 @@
 2. **Root Directory**: 저장소 루트(이 클라이언트가 루트인 경우 그대로)
 3. **Build Command**: `npm run build`
 4. **Output Directory**: `dist`
-5. **Environment Variables** → **`VITE_API_URL`** = 백엔드 공개 URL (끝에 `/` 없이), 예: `https://api.example.com`
+5. **Environment Variables (Production)**  
+   - **`CLASSPAGE_API_ORIGIN`** = 백엔드 공개 URL (끝 `/` 없이), 예: `https://classpage-api.onrender.com`  
+     → 브라우저는 같은 사이트의 `/api/classpage/...` 로만 요청하고, Vercel 서버리스가 여기로 프록시합니다. (**`Failed to fetch`(localhost) 방지**)
+   - (선택) 빌드 시 API 주소를 직접 박을 때만 **`VITE_API_URL`** 을 넣으면 프록시 대신 그 주소로 요청합니다.
 
-배포 후 URL이 바뀌면 Vercel 대시보드에서 `VITE_API_URL`만 수정하고 Redeploy 하면 됩니다.
+`CLASSPAGE_API_ORIGIN`만 바꾸면 **클라이언트 재빌드 없이** Redeploy 로 반영됩니다.
 
 `vercel.json`에 SPA용 rewrite가 있어서 새로고침해도 라우팅이 유지됩니다.
 
