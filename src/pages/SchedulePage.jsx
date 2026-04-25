@@ -129,9 +129,20 @@ export default function SchedulePage() {
                     <div className="upcoming-title">{s.title}</div>
                     <div className="upcoming-date">{formatDate(s.date, true)}</div>
                   </div>
-                  <Badge tone={s.important ? 'warning' : 'primary'}>
-                    {daysUntilLabel(s.date)}
-                  </Badge>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Badge tone={s.important ? 'warning' : 'primary'}>
+                      {daysUntilLabel(s.date)}
+                    </Badge>
+                    {isTeacher && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeSchedule(s.id)}
+                      >
+                        삭제
+                      </Button>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
