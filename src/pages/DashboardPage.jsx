@@ -87,7 +87,7 @@ export default function DashboardPage() {
                   <div className="upcoming-date">
                     {n.authorName} · {formatDate(n.createdAt)}
                   </div>
-                  <div className="schedule-desc" style={{ marginTop: 4 }}>
+                  <div className="schedule-desc notice-body" style={{ marginTop: 4 }}>
                     {n.body}
                   </div>
                 </div>
@@ -190,9 +190,9 @@ export default function DashboardPage() {
           action={<Link to="/rules" className="card-link">전체보기 <Icon name="arrowRight" size={13} /></Link>}
         >
           <ol className="rule-list">
-            {rules.slice(0, 4).map((r) => (
+            {rules.slice(0, 4).map((r, idx) => (
               <li key={r.id}>
-                <span className="rule-number">{r.order}</span>
+                <span className="rule-number">{idx + 1}</span>
                 <span>{r.text}</span>
               </li>
             ))}

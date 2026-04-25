@@ -177,6 +177,10 @@
   margin-top: 4px;
 }
 
+.notice-body {
+  white-space: pre-line;
+}
+
 /* ============ Job card ============ */
 .job-card {
   display: block;
@@ -346,7 +350,8 @@
 
 /* ============ Meal ============ */
 .meal-switch {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   gap: 2px;
   padding: 4px;
   background: var(--bg-alt);
@@ -355,8 +360,8 @@
 }
 
 .meal-switch-btn {
-  min-width: 120px;
-  padding: 9px 20px;
+  min-width: 104px;
+  padding: 9px 14px;
   border: none;
   background: transparent;
   border-radius: calc(var(--radius-md) - 4px);
@@ -392,11 +397,10 @@
 
 @media (max-width: 480px) {
   .meal-switch {
-    display: flex;
     width: 100%;
   }
   .meal-switch-btn {
-    flex: 1;
+    flex: 1 1 calc(50% - 4px);
     min-width: 0;
   }
 }
@@ -494,4 +498,44 @@
 /* ============ Dashboard notice spacing ============ */
 .notice-top-card {
   margin-bottom: 18px;
+}
+
+.schedule-layout {
+  grid-template-columns: 2fr 1fr;
+}
+
+@media (max-width: 960px) {
+  .schedule-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .upcoming-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .form-actions {
+    justify-content: stretch;
+    flex-wrap: wrap;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+  }
+
+  .file-row {
+    flex-wrap: wrap;
+  }
+
+  .table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .card {
+    padding: 16px;
+  }
 }

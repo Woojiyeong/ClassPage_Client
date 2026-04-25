@@ -74,7 +74,7 @@ export default function SchedulePage() {
         }
       />
 
-      <div className="grid" style={{ gridTemplateColumns: '2fr 1fr' }}>
+      <div className="grid schedule-layout">
         <Calendar
           schedules={schedules}
           selectedDate={selectedDate}

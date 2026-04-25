@@ -166,7 +166,7 @@ export default function PortfolioEditPage() {
           />
 
           <div className="form-field">
-            <label>포트폴리오/이력서 링크 (선택)</label>
+            <label>포트폴리오 링크 (선택)</label>
             <input
               value={form.link}
               onChange={(e) => setForm((p) => ({ ...p, link: e.target.value }))}

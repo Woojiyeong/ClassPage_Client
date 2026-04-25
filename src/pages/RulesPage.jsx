@@ -38,9 +38,9 @@ export default function RulesPage() {
           <EmptyState title="등록된 규칙이 없습니다" />
         ) : (
           <ol className="rule-list big">
-            {rules.map((r) => (
+            {rules.map((r, idx) => (
               <li key={r.id}>
-                <span className="rule-number">{r.order}</span>
+                <span className="rule-number">{idx + 1}</span>
                 <span style={{ flex: 1 }}>{r.text}</span>
                 {isTeacher && (
                   <Button

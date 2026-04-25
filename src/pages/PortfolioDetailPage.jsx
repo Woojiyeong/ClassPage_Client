@@ -109,7 +109,7 @@ export default function PortfolioDetailPage() {
 
       <div className="grid grid-2">
         <FileCard title="이력서 PDF" file={portfolio.resume} />
-        <Card title="제출 링크">
+        <Card title="포트폴리오 링크">
           {portfolio.link ? (
             <a href={portfolio.link} target="_blank" rel="noreferrer" className="card-link">
               링크 열기
