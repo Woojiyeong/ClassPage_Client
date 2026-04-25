@@ -103,11 +103,8 @@ export default function PortfolioEditPage() {
 
   const submit = async (e) => {
     e.preventDefault()
-    if (!form.resume && !form.link.trim()) {
-      setErrors((p) => ({
-        ...p,
-        general: '이력서 PDF 또는 링크 중 최소 1개는 입력해야 합니다.',
-      }))
+    if (!form.link.trim()) {
+      setErrors((p) => ({ ...p, general: '포트폴리오 링크를 입력하세요.' }))
       return
     }
     if (!form.title.trim()) {
@@ -135,7 +132,7 @@ export default function PortfolioEditPage() {
     <>
       <PageHeader
         title={existing ? '포트폴리오 수정' : '포트폴리오 등록'}
-        description="이력서 PDF와 링크를 제출합니다. 저장 후 언제든 다시 수정할 수 있습니다."
+        description="이력서 PDF와 포트폴리오 링크를 제출합니다. 저장 후 언제든 다시 수정할 수 있습니다."
       />
 
       <form onSubmit={submit}>
@@ -154,7 +151,7 @@ export default function PortfolioEditPage() {
 
         <Card
           title="이력서 제출"
-          subtitle="이력서 PDF 또는 링크 중 하나 이상을 제출해야 저장할 수 있어요."
+          subtitle="포트폴리오 링크는 필수입니다. 이력서 PDF는 선택입니다."
         >
           <FileField
             label="이력서 PDF"
@@ -166,11 +163,12 @@ export default function PortfolioEditPage() {
           />
 
           <div className="form-field">
-            <label>포트폴리오 링크 (선택)</label>
+            <label>포트폴리오 링크</label>
             <input
               value={form.link}
               onChange={(e) => setForm((p) => ({ ...p, link: e.target.value }))}
               placeholder="https://..."
+              required
             />
           </div>
 
@@ -181,7 +179,7 @@ export default function PortfolioEditPage() {
           <Button variant="ghost" type="button" onClick={() => navigate(-1)}>
             취소
           </Button>
-          <Button type="submit" disabled={saving || (!form.resume && !form.link.trim())}>
+          <Button type="submit" disabled={saving || !form.link.trim()}>
             {saving ? '저장 중…' : '저장'}
           </Button>
         </div>
