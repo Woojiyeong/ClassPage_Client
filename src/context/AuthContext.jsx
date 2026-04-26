@@ -79,12 +79,37 @@ export function AuthProvider({ children }) {
         body: { username, password },
         token: null,
       })
+      if (res?.requires_password_change) {
+        return {
+          requiresPasswordChange: true,
+          user: mapUser(res.user),
+        }
+      }
       const access = res?.access_token
       if (!access) throw new Error('로그인 응답에 토큰이 없습니다.')
       setStoredToken(access)
       setToken(access)
       setUser(mapUser(res.user))
       await refreshEmploymentPermission(access)
+      return { requiresPasswordChange: false }
+    },
+    [refreshEmploymentPermission],
+  )
+
+  const changeInitialPassword = useCallback(
+    async (username, currentPassword, newPassword) => {
+      const res = await apiFetch('/auth/change-password', {
+        method: 'POST',
+        body: { username, currentPassword, newPassword },
+        token: null,
+      })
+      const access = res?.access_token
+      if (!access) throw new Error('비밀번호 변경 응답에 토큰이 없습니다.')
+      setStoredToken(access)
+      setToken(access)
+      setUser(mapUser(res.user))
+      await refreshEmploymentPermission(access)
+      return { requiresPasswordChange: false }
     },
     [refreshEmploymentPermission],
   )
@@ -116,6 +141,7 @@ export function AuthProvider({ children }) {
       isAdmin,
       canPostJobs,
       login,
+      changeInitialPassword,
       logout,
       refreshEmploymentPermission: () => refreshEmploymentPermission(token),
       loadMe: () => loadMe(token),
@@ -126,6 +152,7 @@ export function AuthProvider({ children }) {
     booting,
     canManageEmployment,
     login,
+    changeInitialPassword,
     logout,
     loadMe,
     refreshEmploymentPermission,
