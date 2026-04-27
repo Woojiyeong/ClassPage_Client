@@ -18,30 +18,34 @@ export default function JobWritePage() {
 
   const set = (key) => (e) => setForm((p) => ({ ...p, [key]: e.target.value }))
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault()
     if (!form.title.trim() || !form.content.trim()) return
-    addJobPost({
-      title: form.title,
-      company: form.company,
-      content: form.content,
-      authorId: user.id,
-      authorName: user.name,
-      visibility: 'teacher-only',
-    })
-    navigate('/jobs', { replace: true })
+    try {
+      await addJobPost({
+        title: form.title,
+        company: form.company,
+        content: form.content,
+        authorId: user.id,
+        authorName: user.name,
+        visibility: 'teacher-only',
+      })
+      navigate('/jobs', { replace: true })
+    } catch (err) {
+      window.alert(err?.message || '게시에 실패했습니다.')
+    }
   }
 
   return (
     <>
       <PageHeader
         title="새 취업 정보 작성"
-        description="게시글은 작성자 본인과 교사만 열람할 수 있습니다."
+        description="게시글은 학급 전체에 공유됩니다."
       />
 
       <Card>
         <div style={{ marginBottom: 12 }}>
-          <Badge tone="primary">공개 범위: 본인 + 교사</Badge>
+          <Badge tone="primary">공개 범위: 학급 전체</Badge>
         </div>
 
         <form onSubmit={submit}>

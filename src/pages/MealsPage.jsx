@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import PageHeader from '../components/common/PageHeader.jsx'
 import Card from '../components/common/Card.jsx'
 import Badge from '../components/common/Badge.jsx'
@@ -37,43 +37,58 @@ function SectionCard({ label, sub, section }) {
 
 export default function MealsPage() {
   const { meals } = useData()
-
   const todayIso = toISO(new Date())
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const tomorrowIso = toISO(tomorrow)
+  const weekdayLabel = ['일', '월', '화', '수', '목', '금', '토']
 
-  const tabs = [
-    { key: 'today', label: '오늘', date: todayIso },
-    { key: 'tomorrow', label: '내일', date: tomorrowIso },
-  ]
+  const tabs = useMemo(() => {
+    const sorted = [...meals].sort((a, b) => a.date.localeCompare(b.date))
+    return sorted.map((m) => {
+      const dateObj = new Date(`${m.date}T00:00:00`)
+      const day = weekdayLabel[dateObj.getDay()] ?? ''
+      return {
+        key: m.date,
+        label: `${day}요일`,
+        date: m.date,
+      }
+    })
+  }, [meals])
 
-  const [selected, setSelected] = useState('today')
-  const selectedTab = tabs.find((t) => t.key === selected)
-  const selectedMeal = meals.find((m) => m.date === selectedTab.date)
+  const initialSelected = useMemo(() => {
+    if (!tabs.length) return ''
+    return tabs.find((t) => t.date >= todayIso)?.key ?? tabs[0].key
+  }, [tabs, todayIso])
+
+  const [selected, setSelected] = useState('')
+  const selectedKey = selected || initialSelected
+  const selectedTab = tabs.find((t) => t.key === selectedKey)
+  const selectedMeal = selectedTab
+    ? meals.find((m) => m.date === selectedTab.date)
+    : undefined
 
   return (
     <>
       <PageHeader
         title="급식"
-        description="오늘과 내일의 조식·중식·석식을 확인해보세요."
+        description="이번 주 급식(조식·중식·석식)을 날짜별로 확인해보세요."
       />
 
-      <div className="meal-switch" role="tablist">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            role="tab"
-            aria-selected={selected === tab.key}
-            onClick={() => setSelected(tab.key)}
-            className={`meal-switch-btn${selected === tab.key ? ' is-active' : ''}`}
-          >
-            <span className="meal-switch-btn-label">{tab.label}</span>
-            <span className="meal-switch-btn-sub">{formatDate(tab.date, true)}</span>
-          </button>
-        ))}
-      </div>
+      {tabs.length > 0 && (
+        <div className="meal-switch" role="tablist">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={selectedKey === tab.key}
+              onClick={() => setSelected(tab.key)}
+              className={`meal-switch-btn${selectedKey === tab.key ? ' is-active' : ''}`}
+            >
+              <span className="meal-switch-btn-label">{tab.label}</span>
+              <span className="meal-switch-btn-sub">{formatDate(tab.date, true)}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {selectedMeal ? (
         <div className="grid grid-3">
@@ -88,7 +103,11 @@ export default function MealsPage() {
         </div>
       ) : (
         <EmptyState
-          title={`${selectedTab.label}은(는) 등록된 급식이 없습니다`}
+          title={
+            selectedTab
+              ? `${selectedTab.label}은(는) 등록된 급식이 없습니다`
+              : '등록된 급식이 없습니다'
+          }
         />
       )}
     </>

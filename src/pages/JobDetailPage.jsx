@@ -16,15 +16,13 @@ export default function JobDetailPage() {
 
   if (!post) return <Navigate to="/jobs" replace />
 
-  // 학생이 본인 글이 아닌 경우 접근 차단
-  if (!isTeacher && post.authorId !== user.id) {
-    return <Navigate to="/forbidden" replace />
-  }
-
-  const handleDelete = () => {
-    if (window.confirm('정말 삭제하시겠어요?')) {
-      removeJobPost(post.id)
+  const handleDelete = async () => {
+    if (!window.confirm('정말 삭제하시겠어요?')) return
+    try {
+      await removeJobPost(post.id)
       navigate('/jobs', { replace: true })
+    } catch (err) {
+      window.alert(err?.message || '삭제에 실패했습니다.')
     }
   }
 
@@ -47,7 +45,7 @@ export default function JobDetailPage() {
               {post.company ? ` · ${post.company}` : ''} · {formatDate(post.createdAt)}
             </div>
           </div>
-          <Badge tone="primary">교사 열람 전용</Badge>
+          <Badge tone="primary">학급 공유</Badge>
         </div>
 
         <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />

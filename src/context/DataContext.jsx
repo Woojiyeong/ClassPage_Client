@@ -1,95 +1,449 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
-import * as mock from '../data/mockData.js'
-
-/**
- * 단일 프론트 전역 store.
- * 각 리소스에 대해 (list + mutate actions) 형태로 정리되어 있어
- * 추후 각 action을 fetch/axios 호출로 교체하면 곧바로 백엔드 연동 가능.
- */
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { useAuth } from './AuthContext.jsx'
+import { apiFetch } from '../api/api.js'
 
 const DataContext = createContext(null)
 
-const uid = (prefix) => `${prefix}-${Math.random().toString(36).slice(2, 9)}`
+/** @param {string} content */
+/** @param {string} date YYYY-MM-DD */
+function mealMenuFromApiContent(content, date) {
+  if (!content || typeof content !== 'string') {
+    return { date, breakfast: undefined, lunch: undefined, dinner: undefined }
+  }
+  const trimmed = content.trim()
+  if (trimmed.startsWith('{')) {
+    try {
+      const j = JSON.parse(trimmed)
+      return {
+        date,
+        breakfast: j.breakfast,
+        lunch: j.lunch,
+        dinner: j.dinner,
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  const dishes = trimmed
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  return {
+    date,
+    lunch: dishes.length ? { dishes } : undefined,
+  }
+}
+
+function mapEvent(e) {
+  const rawTitle = e.title || ''
+  const important = rawTitle.startsWith('[중요]')
+  const title = important ? rawTitle.replace(/^\[중요\]\s*/, '').trim() : rawTitle
+  return {
+    id: String(e.id),
+    title,
+    date: e.event_date,
+    startDate: e.start_date || e.event_date,
+    endDate: e.end_date || '',
+    description: e.description || '',
+    important,
+    createdBy: e.created_by != null ? String(e.created_by) : '',
+  }
+}
+
+function mapEmployment(row) {
+  const c = row.creator
+  return {
+    id: String(row.id),
+    title: row.title,
+    company: row.company || '',
+    content: row.content || '',
+    url: row.url || '',
+    authorId: c?.id != null ? String(c.id) : '',
+    authorName: c?.name || '',
+    createdAt: row.created_at,
+    visibility: 'teacher-only',
+  }
+}
+
+function parseStoredPortfolioPayload(raw) {
+  if (!raw || typeof raw !== 'string') {
+    return { resume: null, portfolio: null, legacyText: '' }
+  }
+  const t = raw.trim()
+  if (t.startsWith('{')) {
+    try {
+      const j = JSON.parse(t)
+      if (j && j.v === 1) {
+        return {
+          resume: j.resume ?? null,
+          portfolio: j.portfolio ?? null,
+          legacyText: '',
+        }
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  return { resume: null, portfolio: null, legacyText: raw }
+}
+
+function mapPortfolio(p) {
+  const st = p.student
+  const sid = p.student_id ?? p.student?.id
+  const raw = p.content || ''
+  const { resume, portfolio, legacyText } = parseStoredPortfolioPayload(raw)
+  return {
+    id: String(p.id),
+    ownerId: String(sid ?? ''),
+    ownerName: st?.name || '',
+    title: p.title || '',
+    summary: p.summary || '',
+    legacyContent: legacyText,
+    link: p.link || '',
+    updatedAt: p.updated_at,
+    resume,
+    portfolio,
+  }
+}
+
+function mapRule(r) {
+  return {
+    id: String(r.id),
+    order: r.position ?? 0,
+    text: r.content || '',
+  }
+}
+
+/** PostgreSQL DATE / ISO 문자열 모두 YYYY-MM-DD 로 맞춤 */
+function penaltyWeekStartOnly(v) {
+  if (v == null || v === '') return ''
+  if (typeof v === 'string') return v.slice(0, 10)
+  try {
+    const d = new Date(v)
+    if (Number.isNaN(d.getTime())) return ''
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  } catch {
+    return ''
+  }
+}
+
+function mapPenalty(p) {
+  return {
+    id: String(p.id),
+    studentId: '',
+    studentName: p.student_name || '',
+    reason: p.reason || '',
+    date: penaltyWeekStartOnly(p.week_start),
+    startDate: penaltyWeekStartOnly(p.start_date ?? p.week_start),
+    endDate: penaltyWeekStartOnly(p.end_date ?? ''),
+    status: p.status || 'open',
+  }
+}
+
+function mapAnnouncement(a) {
+  const c = a.creator
+  return {
+    id: String(a.id),
+    title: a.title,
+    body: a.content,
+    createdAt: a.created_at,
+    authorName: c?.name || '',
+  }
+}
 
 export function DataProvider({ children }) {
-  const [schedules, setSchedules] = useState(mock.schedules)
-  const [jobPosts, setJobPosts] = useState(mock.jobPosts)
-  const [meals] = useState(mock.meals)
-  const [portfolios, setPortfolios] = useState(mock.portfolios)
-  const [rules, setRules] = useState(mock.rules)
-  const [penalties, setPenalties] = useState(mock.penalties)
-  const [notices, setNotices] = useState(mock.notices)
+  const { isAuthenticated } = useAuth()
+  const [schedules, setSchedules] = useState([])
+  const [jobPosts, setJobPosts] = useState([])
+  const [meals, setMeals] = useState([])
+  const [portfolios, setPortfolios] = useState([])
+  const [rules, setRules] = useState([])
+  const [penalties, setPenalties] = useState([])
+  const [notices, setNotices] = useState([])
+  const [scheduleMonth, setScheduleMonth] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })
+  const scheduleMonthRef = useRef(scheduleMonth)
+  scheduleMonthRef.current = scheduleMonth
 
-  // --- Schedule ---
-  const addSchedule = useCallback((payload) => {
-    setSchedules((prev) => [{ id: uid('s'), ...payload }, ...prev])
-  }, [])
-  const updateSchedule = useCallback((id, patch) => {
-    setSchedules((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)))
-  }, [])
-  const removeSchedule = useCallback((id) => {
-    setSchedules((prev) => prev.filter((s) => s.id !== id))
-  }, [])
-
-  // --- Job posts ---
-  const addJobPost = useCallback((payload) => {
-    setJobPosts((prev) => [
-      { id: uid('j'), createdAt: new Date().toISOString(), visibility: 'teacher-only', ...payload },
-      ...prev,
-    ])
-  }, [])
-  const removeJobPost = useCallback((id) => {
-    setJobPosts((prev) => prev.filter((j) => j.id !== id))
+  const refreshSchedules = useCallback(async (monthYYYYMM) => {
+    const m = monthYYYYMM || scheduleMonthRef.current
+    const rows = await apiFetch(`/events?month=${encodeURIComponent(m)}`)
+    setSchedules(Array.isArray(rows) ? rows.map(mapEvent) : [])
+    if (monthYYYYMM) setScheduleMonth(monthYYYYMM)
   }, [])
 
-  // --- Portfolio ---
-  const upsertPortfolio = useCallback((ownerId, ownerName, payload) => {
-    setPortfolios((prev) => {
-      const existing = prev.find((p) => p.ownerId === ownerId)
-      const updatedAt = new Date().toISOString()
-      if (existing) {
-        return prev.map((p) =>
-          p.ownerId === ownerId ? { ...p, ...payload, updatedAt } : p,
-        )
+  const refreshMeals = useCallback(async () => {
+    const todayRes = await apiFetch('/meals/today')
+    const weekRes = await apiFetch('/meals?offset=0')
+    const map = new Map()
+    if (todayRes?.date && typeof todayRes.content === 'string') {
+      map.set(todayRes.date, mealMenuFromApiContent(todayRes.content, todayRes.date))
+    }
+    if (Array.isArray(weekRes)) {
+      for (const row of weekRes) {
+        if (row?.date)
+          map.set(row.date, mealMenuFromApiContent(row.content ?? '', row.date))
       }
-      return [
-        {
-          id: uid('p'),
-          ownerId,
-          ownerName,
-          ...payload,
-          updatedAt,
-        },
-        ...prev,
-      ]
-    })
+    }
+    setMeals([...map.values()].sort((a, b) => a.date.localeCompare(b.date)))
   }, [])
 
-  // --- Rules ---
-  const addRule = useCallback((text) => {
-    setRules((prev) => [...prev, { id: uid('r'), order: prev.length + 1, text }])
-  }, [])
-  const removeRule = useCallback((id) => {
-    setRules((prev) =>
-      prev.filter((r) => r.id !== id).map((r, i) => ({ ...r, order: i + 1 })),
-    )
+  const refreshPortfolios = useCallback(async () => {
+    const rows = await apiFetch('/portfolios')
+    setPortfolios(Array.isArray(rows) ? rows.map(mapPortfolio) : [])
   }, [])
 
-  // --- Penalties ---
-  const addPenalty = useCallback((payload) => {
-    setPenalties((prev) => [{ id: uid('pn'), status: 'open', ...payload }, ...prev])
-  }, [])
-  const updatePenaltyStatus = useCallback((id, status) => {
-    setPenalties((prev) => prev.map((p) => (p.id === id ? { ...p, status } : p)))
+  const refreshRules = useCallback(async () => {
+    const rows = await apiFetch('/rules')
+    const mapped = Array.isArray(rows)
+      ? rows.map(mapRule).sort((a, b) => a.order - b.order)
+      : []
+    setRules(mapped)
   }, [])
 
-  // --- Notices ---
-  const addNotice = useCallback((payload) => {
-    setNotices((prev) => [
-      { id: uid('n'), createdAt: new Date().toISOString(), ...payload },
-      ...prev,
+  const refreshPenalties = useCallback(async () => {
+    const rows = await apiFetch('/penalties/recent')
+    setPenalties(Array.isArray(rows) ? rows.map(mapPenalty) : [])
+  }, [])
+
+  const refreshJobPosts = useCallback(async () => {
+    const rows = await apiFetch('/employment')
+    setJobPosts(Array.isArray(rows) ? rows.map(mapEmployment) : [])
+  }, [])
+
+  const refreshNotices = useCallback(async () => {
+    const rows = await apiFetch('/announcements')
+    setNotices(Array.isArray(rows) ? rows.map(mapAnnouncement) : [])
+  }, [])
+
+  const refreshAll = useCallback(async () => {
+    const d = new Date()
+    const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    await Promise.all([
+      refreshSchedules(month),
+      refreshMeals(),
+      refreshPortfolios(),
+      refreshRules(),
+      refreshPenalties(),
+      refreshJobPosts(),
+      refreshNotices(),
     ])
+  }, [
+    refreshJobPosts,
+    refreshMeals,
+    refreshNotices,
+    refreshPenalties,
+    refreshPortfolios,
+    refreshRules,
+    refreshSchedules,
+  ])
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setSchedules([])
+      setJobPosts([])
+      setMeals([])
+      setPortfolios([])
+      setRules([])
+      setPenalties([])
+      setNotices([])
+      return
+    }
+    refreshAll().catch(() => {})
+  }, [isAuthenticated, refreshAll])
+
+  const addSchedule = useCallback(
+    async (payload) => {
+      const title = payload.important
+        ? `[중요] ${payload.title.trim()}`
+        : payload.title.trim()
+      await apiFetch('/events', {
+        method: 'POST',
+        body: {
+          title,
+          description: payload.description?.trim() || '',
+          event_date: payload.startDate || payload.date,
+          start_date: payload.startDate || payload.date,
+          end_date: payload.endDate || undefined,
+        },
+      })
+      const month = (payload.startDate || payload.date)?.slice(0, 7) || scheduleMonthRef.current
+      await refreshSchedules(month)
+    },
+    [refreshSchedules],
+  )
+
+  const updateSchedule = useCallback(async (_id, _patch) => {
+    /* 백엔드에 일정 수정 API 없음 */
   }, [])
+
+  const removeSchedule = useCallback(
+    async (id) => {
+      await apiFetch(`/events/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      await refreshSchedules()
+    },
+    [refreshSchedules],
+  )
+
+  const addJobPost = useCallback(
+    async (payload) => {
+      await apiFetch('/employment', {
+        method: 'POST',
+        body: {
+          title: payload.title,
+          company: payload.company || '',
+          content: payload.content,
+        },
+      })
+      await refreshJobPosts()
+    },
+    [refreshJobPosts],
+  )
+
+  const removeJobPost = useCallback(
+    async (id) => {
+      await apiFetch(`/employment/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      await refreshJobPosts()
+    },
+    [refreshJobPosts],
+  )
+
+  const upsertPortfolio = useCallback(
+    async (_ownerId, _ownerName, payload) => {
+      const mine = await apiFetch('/portfolios/me')
+      if (Array.isArray(mine)) {
+        for (const row of mine) {
+          if (row?.id != null) {
+            await apiFetch(`/portfolios/${encodeURIComponent(row.id)}`, {
+              method: 'DELETE',
+            })
+          }
+        }
+      }
+      const body = {
+        title: payload.title,
+        summary: payload.summary ?? '',
+        link: payload.link ?? '',
+      }
+      if (payload.resume) body.resume = payload.resume
+      if (payload.portfolio) body.portfolio = payload.portfolio
+      await apiFetch('/portfolios', {
+        method: 'POST',
+        body,
+      })
+      await refreshPortfolios()
+    },
+    [refreshPortfolios],
+  )
+
+  const addRule = useCallback(
+    async (text) => {
+      await apiFetch('/rules', { method: 'POST', body: { content: text } })
+      await refreshRules()
+    },
+    [refreshRules],
+  )
+
+  const removeRule = useCallback(
+    async (id) => {
+      await apiFetch(`/rules/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      await refreshRules()
+    },
+    [refreshRules],
+  )
+
+  const addPenalty = useCallback(
+    async (payload) => {
+      await apiFetch('/penalties', {
+        method: 'POST',
+        body: {
+          student_name: payload.studentName,
+          reason: payload.reason,
+          week_start: payload.startDate,
+          start_date: payload.startDate,
+          end_date: payload.endDate || undefined,
+        },
+      })
+      await refreshPenalties()
+    },
+    [refreshPenalties],
+  )
+
+  const removePenalty = useCallback(
+    async (id) => {
+      await apiFetch(`/penalties/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      await refreshPenalties()
+    },
+    [refreshPenalties],
+  )
+
+  const updatePenaltyStatus = useCallback(
+    async (id, status) => {
+      await apiFetch(`/penalties/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: { status },
+      })
+      await refreshPenalties()
+    },
+    [refreshPenalties],
+  )
+
+  const updatePenaltyDates = useCallback(
+    async (id, payload) => {
+      await apiFetch(`/penalties/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: {
+          start_date: payload.startDate,
+          end_date: payload.endDate || '',
+        },
+      })
+      await refreshPenalties()
+    },
+    [refreshPenalties],
+  )
+
+  const addNotice = useCallback(
+    async (payload) => {
+      await apiFetch('/announcements', {
+        method: 'POST',
+        body: { title: payload.title, content: payload.body },
+      })
+      await refreshNotices()
+    },
+    [refreshNotices],
+  )
+
+  const removeNotice = useCallback(
+    async (id) => {
+      await apiFetch(`/announcements/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      await refreshNotices()
+    },
+    [refreshNotices],
+  )
+
+  const updateNotice = useCallback(
+    async (id, payload) => {
+      await apiFetch(`/announcements/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: { title: payload.title, content: payload.body },
+      })
+      await refreshNotices()
+    },
+    [refreshNotices],
+  )
 
   const value = useMemo(
     () => ({
@@ -100,6 +454,11 @@ export function DataProvider({ children }) {
       rules,
       penalties,
       notices,
+      scheduleMonth,
+      setScheduleMonth,
+      refreshSchedules,
+      refreshMeals,
+      refreshAll,
       addSchedule,
       updateSchedule,
       removeSchedule,
@@ -109,8 +468,12 @@ export function DataProvider({ children }) {
       addRule,
       removeRule,
       addPenalty,
+      removePenalty,
       updatePenaltyStatus,
+      updatePenaltyDates,
       addNotice,
+      removeNotice,
+      updateNotice,
     }),
     [
       schedules,
@@ -120,6 +483,10 @@ export function DataProvider({ children }) {
       rules,
       penalties,
       notices,
+      scheduleMonth,
+      refreshSchedules,
+      refreshMeals,
+      refreshAll,
       addSchedule,
       updateSchedule,
       removeSchedule,
@@ -129,8 +496,12 @@ export function DataProvider({ children }) {
       addRule,
       removeRule,
       addPenalty,
+      removePenalty,
       updatePenaltyStatus,
+      updatePenaltyDates,
       addNotice,
+      removeNotice,
+      updateNotice,
     ],
   )
 

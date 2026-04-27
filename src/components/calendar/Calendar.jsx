@@ -1,14 +1,28 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { buildMonthMatrix, isSameDay, toISO } from '../../utils/date.js'
 import Icon from '../common/Icon.jsx'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 
-export default function Calendar({ schedules, selectedDate, onSelect }) {
+function eachDateRange(startIso, endIso, cb) {
+  const start = new Date(`${startIso}T00:00:00`)
+  const end = new Date(`${endIso}T00:00:00`)
+  const d = new Date(start)
+  while (d.getTime() <= end.getTime()) {
+    cb(toISO(d))
+    d.setDate(d.getDate() + 1)
+  }
+}
+
+export default function Calendar({ schedules, selectedDate, onSelect, onViewChange }) {
   const [cursor, setCursor] = useState(() => {
     const d = selectedDate ? new Date(selectedDate) : new Date()
     return { year: d.getFullYear(), month: d.getMonth() }
   })
+
+  useEffect(() => {
+    onViewChange?.({ year: cursor.year, month: cursor.month })
+  }, [cursor, onViewChange])
 
   const cells = useMemo(
     () => buildMonthMatrix(cursor.year, cursor.month),
@@ -18,9 +32,12 @@ export default function Calendar({ schedules, selectedDate, onSelect }) {
   const byDate = useMemo(() => {
     const map = new Map()
     for (const s of schedules) {
-      const key = toISO(s.date)
-      if (!map.has(key)) map.set(key, [])
-      map.get(key).push(s)
+      const start = s.startDate || toISO(s.date)
+      const end = s.endDate || start
+      eachDateRange(start, end, (key) => {
+        if (!map.has(key)) map.set(key, [])
+        map.get(key).push(s)
+      })
     }
     return map
   }, [schedules])

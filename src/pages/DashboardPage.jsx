@@ -17,7 +17,7 @@ import {
 
 export default function DashboardPage() {
   const { user, isTeacher } = useAuth()
-  const { schedules, meals, penalties, rules, jobPosts, portfolios } = useData()
+  const { schedules, meals, penalties, rules, jobPosts, portfolios, notices } = useData()
 
   const todayIso = toISO(new Date())
   const todayMeal = meals.find((m) => m.date === todayIso)
@@ -42,11 +42,7 @@ export default function DashboardPage() {
     })
   }, [penalties])
 
-  const myJobs = useMemo(() => {
-    if (!user) return []
-    if (isTeacher) return jobPosts
-    return jobPosts.filter((j) => j.authorId === user.id)
-  }, [jobPosts, user, isTeacher])
+  const myJobs = useMemo(() => jobPosts, [jobPosts])
 
   const visiblePortfolios = useMemo(() => {
     // 목록 카드에서는 반 전체 현황 노출 (제목/내용은 비공개, 업로드 여부만 표시)
@@ -73,6 +69,33 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      <Card
+        className="notice-top-card"
+        title="공지사항"
+        subtitle={notices.length ? `최근 ${notices.length}건` : '등록된 공지 없음'}
+        action={isTeacher ? <Link to="/admin" className="card-link">공지 작성 <Icon name="arrowRight" size={13} /></Link> : undefined}
+      >
+        {notices.length === 0 ? (
+          <EmptyState title="등록된 공지사항이 없습니다" />
+        ) : (
+          <ul className="upcoming-list">
+            {notices.slice(0, 3).map((n) => (
+              <li key={n.id} className="upcoming-item">
+                <div>
+                  <div className="upcoming-title">{n.title}</div>
+                  <div className="upcoming-date">
+                    {n.authorName} · {formatDate(n.createdAt)}
+                  </div>
+                  <div className="schedule-desc notice-body" style={{ marginTop: 4 }}>
+                    {n.body}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       <div className="grid grid-3">
         <Card
@@ -167,9 +190,9 @@ export default function DashboardPage() {
           action={<Link to="/rules" className="card-link">전체보기 <Icon name="arrowRight" size={13} /></Link>}
         >
           <ol className="rule-list">
-            {rules.slice(0, 4).map((r) => (
+            {rules.slice(0, 4).map((r, idx) => (
               <li key={r.id}>
-                <span className="rule-number">{r.order}</span>
+                <span className="rule-number">{idx + 1}</span>
                 <span>{r.text}</span>
               </li>
             ))}
@@ -178,13 +201,13 @@ export default function DashboardPage() {
 
         <Card
           title="취업 정보 요약"
-          subtitle={isTeacher ? '전체 게시글' : '내가 올린 게시글'}
+          subtitle="학급 전체 게시글"
           action={<Link to="/jobs" className="card-link">전체보기 <Icon name="arrowRight" size={13} /></Link>}
         >
           {myJobs.length === 0 ? (
             <EmptyState
               title="게시된 내용이 없습니다"
-              description={isTeacher ? '학생들이 올린 취업 정보가 이곳에 표시됩니다.' : '첫 글을 작성해보세요.'}
+              description="첫 취업 정보를 작성해보세요."
             />
           ) : (
             <ul className="upcoming-list">
@@ -196,7 +219,7 @@ export default function DashboardPage() {
                       {j.authorName} · {formatDate(j.createdAt)}
                     </div>
                   </div>
-                  <Badge tone="primary">교사 열람</Badge>
+                  <Badge tone="primary">학급 공유</Badge>
                 </li>
               ))}
             </ul>

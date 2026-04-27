@@ -2,7 +2,7 @@
  * 공용 도메인 타입 정의 (JSDoc)
  * 백엔드 연동 시 이 파일의 구조를 그대로 API 응답/요청 타입으로 사용한다.
  *
- * @typedef {'student' | 'teacher'} Role
+ * @typedef {'student' | 'teacher' | 'admin'} Role
  *
  * @typedef {Object} User
  * @property {string} id
@@ -51,6 +51,9 @@
  * @property {string} ownerId
  * @property {string} ownerName
  * @property {string} title
+ * @property {string=} summary
+ * @property {string=} link
+ * @property {string=} legacyContent  이전 방식(텍스트만) 저장분
  * @property {PortfolioFile=} resume      이력서 PDF
  * @property {PortfolioFile=} portfolio   포트폴리오 PDF
  * @property {string} updatedAt       ISO datetime

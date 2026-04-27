@@ -11,11 +11,15 @@ export default function RulesPage() {
   const { rules, addRule, removeRule } = useData()
   const [draft, setDraft] = useState('')
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault()
     if (!draft.trim()) return
-    addRule(draft.trim())
-    setDraft('')
+    try {
+      await addRule(draft.trim())
+      setDraft('')
+    } catch (err) {
+      window.alert(err?.message || '추가에 실패했습니다.')
+    }
   }
 
   return (
@@ -34,12 +38,22 @@ export default function RulesPage() {
           <EmptyState title="등록된 규칙이 없습니다" />
         ) : (
           <ol className="rule-list big">
-            {rules.map((r) => (
+            {rules.map((r, idx) => (
               <li key={r.id}>
-                <span className="rule-number">{r.order}</span>
+                <span className="rule-number">{idx + 1}</span>
                 <span style={{ flex: 1 }}>{r.text}</span>
                 {isTeacher && (
-                  <Button variant="ghost" size="sm" onClick={() => removeRule(r.id)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        await removeRule(r.id)
+                      } catch (err) {
+                        window.alert(err?.message || '삭제에 실패했습니다.')
+                      }
+                    }}
+                  >
                     삭제
                   </Button>
                 )}

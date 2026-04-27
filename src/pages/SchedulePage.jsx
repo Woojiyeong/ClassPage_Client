@@ -20,14 +20,18 @@ import '../components/calendar/Calendar.css'
 
 export default function SchedulePage() {
   const { user, isTeacher } = useAuth()
-  const { schedules, addSchedule, removeSchedule } = useData()
+  const { schedules, addSchedule, removeSchedule, refreshSchedules } = useData()
   const [selectedDate, setSelectedDate] = useState(toISO(new Date()))
   const [modalOpen, setModalOpen] = useState(false)
 
   const selectedSchedules = useMemo(
     () =>
       schedules
-        .filter((s) => s.date === selectedDate)
+        .filter((s) => {
+          const start = s.startDate || s.date
+          const end = s.endDate || start
+          return selectedDate >= start && selectedDate <= end
+        })
         .sort((a, b) => (a.important === b.important ? 0 : a.important ? -1 : 1)),
     [schedules, selectedDate],
   )
@@ -40,10 +44,19 @@ export default function SchedulePage() {
       .slice(0, 6)
   }, [schedules])
 
-  const handleAdd = (payload) => {
-    addSchedule({ ...payload, createdBy: user.id })
-    setModalOpen(false)
-    setSelectedDate(payload.date)
+  const handleAdd = async (payload) => {
+    try {
+      await addSchedule({ ...payload, createdBy: user.id })
+      setModalOpen(false)
+      setSelectedDate(payload.startDate)
+    } catch (e) {
+      window.alert(e?.message || '일정 저장에 실패했습니다.')
+    }
+  }
+
+  const handleCalendarView = ({ year, month }) => {
+    const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`
+    refreshSchedules(monthStr)
   }
 
   return (
@@ -52,18 +65,21 @@ export default function SchedulePage() {
         title="학사 일정"
         description="달력으로 학사 일정을 확인하고 새 일정을 추가할 수 있어요."
         actions={
-          <Button onClick={() => setModalOpen(true)}>
-            <Icon name="plus" size={15} />
-            일정 추가
-          </Button>
+          isTeacher ? (
+            <Button onClick={() => setModalOpen(true)}>
+              <Icon name="plus" size={15} />
+              일정 추가
+            </Button>
+          ) : null
         }
       />
 
-      <div className="grid" style={{ gridTemplateColumns: '2fr 1fr' }}>
+      <div className="grid schedule-layout">
         <Calendar
           schedules={schedules}
           selectedDate={selectedDate}
           onSelect={setSelectedDate}
+          onViewChange={handleCalendarView}
         />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -81,11 +97,16 @@ export default function SchedulePage() {
                       <div className="schedule-title">
                         {s.important && <Badge tone="warning">중요</Badge>} {s.title}
                       </div>
+                    {s.endDate && s.endDate !== s.startDate && (
+                      <div className="upcoming-date">
+                        {formatDate(s.startDate, true)} ~ {formatDate(s.endDate, true)}
+                      </div>
+                    )}
                       {s.description && (
                         <div className="schedule-desc">{s.description}</div>
                       )}
                     </div>
-                    {(isTeacher || s.createdBy === user.id) && (
+                    {isTeacher && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -108,9 +129,20 @@ export default function SchedulePage() {
                     <div className="upcoming-title">{s.title}</div>
                     <div className="upcoming-date">{formatDate(s.date, true)}</div>
                   </div>
-                  <Badge tone={s.important ? 'warning' : 'primary'}>
-                    {daysUntilLabel(s.date)}
-                  </Badge>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Badge tone={s.important ? 'warning' : 'primary'}>
+                      {daysUntilLabel(s.date)}
+                    </Badge>
+                    {isTeacher && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeSchedule(s.id)}
+                      >
+                        삭제
+                      </Button>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -118,7 +150,11 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      <Modal open={modalOpen} title="새 일정 추가" onClose={() => setModalOpen(false)}>
+      <Modal
+        open={modalOpen && isTeacher}
+        title="새 일정 추가"
+        onClose={() => setModalOpen(false)}
+      >
         <ScheduleForm
           initialDate={selectedDate}
           onSubmit={handleAdd}

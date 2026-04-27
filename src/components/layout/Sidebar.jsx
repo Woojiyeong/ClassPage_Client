@@ -53,9 +53,13 @@ export default function Sidebar() {
             <div>
               <div className="sidebar-user-name">{user.name}</div>
               <div className="sidebar-user-role">
-                {user.role === 'teacher'
-                  ? '교사 · 관리자'
-                  : `학생 · ${user.studentNo ?? ''}${user.canPostJobs ? ' · 반 대표' : ''}`}
+                {user.role === 'admin'
+                  ? '시스템 관리자'
+                  : user.role === 'teacher'
+                    ? '교사'
+                    : user.role === 'career'
+                      ? '취업관리자'
+                      : `학생 · ${user.studentNo ?? ''}${user.canPostJobs ? ' · 반 대표' : ''}`}
               </div>
             </div>
           </div>

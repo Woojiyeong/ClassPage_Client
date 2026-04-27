@@ -5,19 +5,28 @@ import { toISO } from '../../utils/date.js'
 export default function ScheduleForm({ initialDate, onSubmit, onCancel }) {
   const [form, setForm] = useState({
     title: '',
-    date: initialDate || toISO(new Date()),
+    startDate: initialDate || toISO(new Date()),
+    endDate: '',
     description: '',
     important: false,
   })
 
   const set = (key) => (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value
-    setForm((prev) => ({ ...prev, [key]: value }))
+    setForm((prev) => {
+      if (key === 'startDate') {
+        // 시작일이 뒤로 밀리면 종료일이 과거가 되지 않도록 자동 정리
+        const nextEndDate = prev.endDate && prev.endDate < value ? '' : prev.endDate
+        return { ...prev, startDate: value, endDate: nextEndDate }
+      }
+      return { ...prev, [key]: value }
+    })
   }
 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.title.trim()) return
+    if (form.endDate && form.endDate < form.startDate) return
     onSubmit?.(form)
   }
 
@@ -34,8 +43,18 @@ export default function ScheduleForm({ initialDate, onSubmit, onCancel }) {
       </div>
 
       <div className="form-field">
-        <label>날짜</label>
-        <input type="date" value={form.date} onChange={set('date')} required />
+        <label>시작일</label>
+        <input type="date" value={form.startDate} onChange={set('startDate')} required />
+      </div>
+
+      <div className="form-field">
+        <label>종료일 (선택)</label>
+        <input
+          type="date"
+          value={form.endDate}
+          onChange={set('endDate')}
+          min={form.startDate}
+        />
       </div>
 
       <div className="form-field">

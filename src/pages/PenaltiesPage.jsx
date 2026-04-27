@@ -9,7 +9,6 @@ import Icon from '../components/common/Icon.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useData } from '../context/DataContext.jsx'
 import { endOfWeek, formatDate, startOfWeek, toISO } from '../utils/date.js'
-import { users } from '../data/mockData.js'
 
 const statusTone = {
   open: 'danger',
@@ -24,13 +23,14 @@ const statusLabel = {
 
 export default function PenaltiesPage() {
   const { isTeacher } = useAuth()
-  const { penalties, addPenalty, updatePenaltyStatus } = useData()
+  const { penalties, addPenalty, removePenalty, updatePenaltyStatus, updatePenaltyDates } = useData()
   const [tab, setTab] = useState('week')
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState({
-    studentId: '',
+    studentName: '',
     reason: '',
-    date: toISO(new Date()),
+    startDate: toISO(new Date()),
+    endDate: '',
   })
 
   const thisWeek = useMemo(() => {
@@ -44,20 +44,21 @@ export default function PenaltiesPage() {
 
   const list = tab === 'week' ? thisWeek : penalties
 
-  const students = users.filter((u) => u.role === 'student')
-
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault()
-    const student = students.find((s) => s.id === form.studentId)
-    if (!student || !form.reason.trim()) return
-    addPenalty({
-      studentId: student.id,
-      studentName: student.name,
-      reason: form.reason.trim(),
-      date: form.date,
-    })
-    setModalOpen(false)
-    setForm({ studentId: '', reason: '', date: toISO(new Date()) })
+    if (!form.studentName.trim() || !form.reason.trim()) return
+    try {
+      await addPenalty({
+        studentName: form.studentName.trim(),
+        reason: form.reason.trim(),
+        startDate: form.startDate,
+        endDate: form.endDate,
+      })
+      setModalOpen(false)
+      setForm({ studentName: '', reason: '', startDate: toISO(new Date()), endDate: '' })
+    } catch (err) {
+      window.alert(err?.message || '저장에 실패했습니다.')
+    }
   }
 
   return (
@@ -108,7 +109,8 @@ export default function PenaltiesPage() {
               <tr>
                 <th>이름</th>
                 <th>사유</th>
-                <th>날짜</th>
+                <th>시작일</th>
+                <th>만료일</th>
                 <th>상태</th>
                 {isTeacher && <th style={{ textAlign: 'right' }}>관리</th>}
               </tr>
@@ -118,26 +120,74 @@ export default function PenaltiesPage() {
                 <tr key={p.id}>
                   <td>{p.studentName}</td>
                   <td>{p.reason}</td>
-                  <td>{formatDate(p.date, true)}</td>
+                  <td>{formatDate(p.startDate || p.date, true)}</td>
+                  <td>{p.endDate ? formatDate(p.endDate, true) : '-'}</td>
                   <td>
                     <Badge tone={statusTone[p.status]}>{statusLabel[p.status]}</Badge>
                   </td>
                   {isTeacher && (
                     <td style={{ textAlign: 'right' }}>
-                      <select
-                        value={p.status}
-                        onChange={(e) => updatePenaltyStatus(p.id, e.target.value)}
-                        style={{
-                          padding: '6px 10px',
-                          border: '1px solid var(--border)',
-                          borderRadius: 6,
-                          background: 'var(--surface)',
-                        }}
-                      >
-                        <option value="open">진행중</option>
-                        <option value="resolved">해결</option>
-                        <option value="waived">면제</option>
-                      </select>
+                      <div style={{ display: 'inline-flex', gap: 8 }}>
+                        <select
+                          value={p.status}
+                          onChange={(e) => updatePenaltyStatus(p.id, e.target.value)}
+                          style={{
+                            padding: '6px 10px',
+                            border: '1px solid var(--border)',
+                            borderRadius: 6,
+                            background: 'var(--surface)',
+                          }}
+                          title="백엔드에 상태 저장은 아직 없습니다"
+                        >
+                          <option value="open">진행중</option>
+                          <option value="resolved">해결</option>
+                          <option value="waived">면제</option>
+                        </select>
+                        <input
+                          type="date"
+                          value={p.startDate || p.date}
+                          onChange={async (e) => {
+                            try {
+                              await updatePenaltyDates(p.id, {
+                                startDate: e.target.value,
+                                endDate: p.endDate || '',
+                              })
+                            } catch (err) {
+                              window.alert(err?.message || '시작일 변경에 실패했습니다.')
+                            }
+                          }}
+                          style={{ padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 6 }}
+                        />
+                        <input
+                          type="date"
+                          value={p.endDate || ''}
+                          onChange={async (e) => {
+                            try {
+                              await updatePenaltyDates(p.id, {
+                                startDate: p.startDate || p.date,
+                                endDate: e.target.value,
+                              })
+                            } catch (err) {
+                              window.alert(err?.message || '만료일 변경에 실패했습니다.')
+                            }
+                          }}
+                          style={{ padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 6 }}
+                        />
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={async () => {
+                            if (!window.confirm('이 패널티를 삭제할까요?')) return
+                            try {
+                              await removePenalty(p.id)
+                            } catch (err) {
+                              window.alert(err?.message || '삭제에 실패했습니다.')
+                            }
+                          }}
+                        >
+                          삭제
+                        </Button>
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -150,19 +200,13 @@ export default function PenaltiesPage() {
       <Modal open={modalOpen} title="패널티 추가" onClose={() => setModalOpen(false)}>
         <form onSubmit={submit}>
           <div className="form-field">
-            <label>학생</label>
-            <select
-              value={form.studentId}
-              onChange={(e) => setForm((p) => ({ ...p, studentId: e.target.value }))}
+            <label>학생 이름</label>
+            <input
+              value={form.studentName}
+              onChange={(e) => setForm((p) => ({ ...p, studentName: e.target.value }))}
               required
-            >
-              <option value="">선택하세요</option>
-              {students.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} ({s.studentNo})
-                </option>
-              ))}
-            </select>
+              placeholder="실명으로 입력"
+            />
           </div>
           <div className="form-field">
             <label>사유</label>
@@ -173,16 +217,26 @@ export default function PenaltiesPage() {
             />
           </div>
           <div className="form-field">
-            <label>날짜</label>
+            <label>해당 주 시작일 (월요일 기준)</label>
             <input
               type="date"
-              value={form.date}
-              onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
+              value={form.startDate}
+              onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))}
               required
             />
           </div>
+          <div className="form-field">
+            <label>만료일 (선택)</label>
+            <input
+              type="date"
+              value={form.endDate}
+              onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))}
+            />
+          </div>
           <div className="form-actions">
-            <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>취소</Button>
+            <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>
+              취소
+            </Button>
             <Button type="submit">저장</Button>
           </div>
         </form>

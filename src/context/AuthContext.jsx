@@ -1,34 +1,162 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { users } from '../data/mockData.js'
-
-const STORAGE_KEY = 'classpage.currentUserId'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
+import { apiFetch, getStoredToken, setStoredToken } from '../api/api.js'
 
 const AuthContext = createContext(null)
 
+function mapUser(dto) {
+  if (!dto) return null
+  return {
+    id: String(dto.id),
+    username: dto.username,
+    name: dto.name,
+    role: dto.role,
+    studentNo: dto.studentNo,
+  }
+}
+
 export function AuthProvider({ children }) {
-  const [currentUserId, setCurrentUserId] = useState(() => {
-    if (typeof window === 'undefined') return null
-    return window.localStorage.getItem(STORAGE_KEY)
-  })
+  const [token, setToken] = useState(() => getStoredToken())
+  const [user, setUser] = useState(null)
+  const [canManageEmployment, setCanManageEmployment] = useState(false)
+  const [booting, setBooting] = useState(true)
+
+  const refreshEmploymentPermission = useCallback(async (t) => {
+    if (!t) {
+      setCanManageEmployment(false)
+      return
+    }
+    try {
+      const res = await apiFetch('/employment/permission', { token: t })
+      setCanManageEmployment(!!res?.canManage)
+    } catch {
+      setCanManageEmployment(false)
+    }
+  }, [])
+
+  const loadMe = useCallback(async (t) => {
+    if (!t) {
+      setUser(null)
+      return
+    }
+    const me = await apiFetch('/auth/me', { token: t })
+    setUser(mapUser(me))
+  }, [])
 
   useEffect(() => {
-    if (currentUserId) window.localStorage.setItem(STORAGE_KEY, currentUserId)
-    else window.localStorage.removeItem(STORAGE_KEY)
-  }, [currentUserId])
+    let cancelled = false
+    ;(async () => {
+      const t = getStoredToken()
+      setToken(t)
+      try {
+        if (t) await loadMe(t)
+        if (!cancelled && t) await refreshEmploymentPermission(t)
+      } catch {
+        if (!cancelled) {
+          setStoredToken(null)
+          setToken(null)
+          setUser(null)
+        }
+      } finally {
+        if (!cancelled) setBooting(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [loadMe, refreshEmploymentPermission])
+
+  const login = useCallback(
+    async (username, password) => {
+      const res = await apiFetch('/auth/login', {
+        method: 'POST',
+        body: { username, password },
+        token: null,
+      })
+      if (res?.requires_password_change) {
+        return {
+          requiresPasswordChange: true,
+          user: mapUser(res.user),
+        }
+      }
+      const access = res?.access_token
+      if (!access) throw new Error('로그인 응답에 토큰이 없습니다.')
+      setStoredToken(access)
+      setToken(access)
+      setUser(mapUser(res.user))
+      await refreshEmploymentPermission(access)
+      return { requiresPasswordChange: false }
+    },
+    [refreshEmploymentPermission],
+  )
+
+  const changeInitialPassword = useCallback(
+    async (username, currentPassword, newPassword) => {
+      const res = await apiFetch('/auth/change-password', {
+        method: 'POST',
+        body: { username, currentPassword, newPassword },
+        token: null,
+      })
+      const access = res?.access_token
+      if (!access) throw new Error('비밀번호 변경 응답에 토큰이 없습니다.')
+      setStoredToken(access)
+      setToken(access)
+      setUser(mapUser(res.user))
+      await refreshEmploymentPermission(access)
+      return { requiresPasswordChange: false }
+    },
+    [refreshEmploymentPermission],
+  )
+
+  const logout = useCallback(() => {
+    setStoredToken(null)
+    setToken(null)
+    setUser(null)
+    setCanManageEmployment(false)
+  }, [])
 
   const value = useMemo(() => {
-    const user = users.find((u) => u.id === currentUserId) || null
+    const role = user?.role
+    const isAdmin = role === 'admin'
+    const isTeacherRole = role === 'teacher'
+    const isStudent = role === 'student'
+    const isStaff = isAdmin || isTeacherRole
+    const canPostJobs =
+      isStaff || canManageEmployment
+
     return {
+      token,
       user,
-      isAuthenticated: !!user,
-      isStudent: user?.role === 'student',
-      isTeacher: user?.role === 'teacher',
-      canPostJobs: user?.role === 'teacher' || user?.canPostJobs === true,
-      login: (userId) => setCurrentUserId(userId),
-      logout: () => setCurrentUserId(null),
-      availableUsers: users,
+      booting,
+      isAuthenticated: !!user && !!token,
+      isStudent,
+      isTeacher: isStaff,
+      isStaff,
+      isAdmin,
+      canPostJobs,
+      login,
+      changeInitialPassword,
+      logout,
+      refreshEmploymentPermission: () => refreshEmploymentPermission(token),
+      loadMe: () => loadMe(token),
     }
-  }, [currentUserId])
+  }, [
+    token,
+    user,
+    booting,
+    canManageEmployment,
+    login,
+    changeInitialPassword,
+    logout,
+    loadMe,
+    refreshEmploymentPermission,
+  ])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AppLayout from './components/layout/AppLayout.jsx'
 import RoleGate from './components/auth/RoleGate.jsx'
+import { useAuth } from './context/AuthContext.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import SchedulePage from './pages/SchedulePage.jsx'
 import JobsPage from './pages/JobsPage.jsx'
@@ -20,13 +21,25 @@ import './App.css'
 import './components/common/ui.css'
 
 export default function App() {
+  const { booting } = useAuth()
+
+  if (booting) {
+    return (
+      <div className="login-page">
+        <div className="login-card">
+          <p style={{ color: 'var(--text-muted)' }}>불러오는 중…</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
 
       <Route
         element={
-          <RoleGate allow={['student', 'teacher']}>
+          <RoleGate allow={['student', 'teacher', 'admin', 'career']}>
             <AppLayout />
           </RoleGate>
         }
@@ -50,7 +63,7 @@ export default function App() {
         <Route
           path="admin"
           element={
-            <RoleGate allow={['teacher']}>
+            <RoleGate allow={['teacher', 'admin']}>
               <AdminPage />
             </RoleGate>
           }
